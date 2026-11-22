@@ -5,7 +5,7 @@
 ✨ **Highlights:**
 
 - 📱 AfriCart mobile storefront (React Native + Expo)
-- 🔐 Clerk social sign-in for customers; custom password login for the admin dashboard
+- 🔐 Clerk email/password and social sign-in for customers; custom password login for the admin dashboard
 - 🛒 Cart, Favorites, Checkout & Orders Flow
 - 💳 PesaPal API checkout with IPN-based payment confirmation
 - 🗺️ Addresses System
@@ -79,12 +79,21 @@ admin sessions.
 
 ### Customer accounts
 
-Customers sign up and sign in on the storefront with Clerk, using the same
-`EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` already listed for the mobile app. The web sign-in screen
-supports email/password accounts plus any social providers enabled in the Clerk Dashboard. Enable
-**Email address** and **Password** under **User & authentication → Sign-in & sign-up options** so
-customers can register without a social account. Never use the admin credentials for customer
-accounts.
+Customers sign up and sign in on the storefront with the Clerk Core 3 Expo SDK (`@clerk/expo`),
+using the same `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` already listed for the mobile app. The web
+sign-in screen supports email/password accounts plus any social providers enabled in the Clerk
+Dashboard. In the Clerk Dashboard:
+
+- Enable **Email address** and **Password** under **User & authentication → Sign-in & sign-up
+  options** so customers can register without a social account.
+- Add the deployed storefront origin and its `/payment/callback` route to the allowed origins and
+  redirect URLs for the Clerk application.
+- Review **Protect → Block sign-ups by country**. If your customer countries are on the blocklist
+  (for example NG or KE), remove them so intended customers can register.
+- For native apps, enable the Native API and register the iOS bundle ID and Android package under
+  **Native applications**.
+
+Never use the admin credentials for customer accounts.
 
 ---
 
@@ -189,11 +198,13 @@ single-page app; the mobile web app is exported as static files by Expo.
    `null`, which prevents Vercel from auto-detecting Vite and running `vite build`.
 3. Add `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` and `EXPO_PUBLIC_API_URL` in Project Settings; set the
    latter to the deployed backend origin followed by `/api`. `EXPO_PUBLIC_SENTRY_DSN` is optional.
+   These `EXPO_PUBLIC_*` values are embedded when the static bundle is built, so set them before
+   building and redeploy after changing them.
 4. Deploy. Expo generates static route files for the web app, including the payment callback page.
 
 Add the environment variables to the Vercel environments where they are needed (Production,
-Preview, and Development), then redeploy after changing them. Vite variables are embedded at build
-time.
+Preview, and Development), then redeploy after changing them. `VITE_*` and `EXPO_PUBLIC_*` variables
+are embedded at build time.
 
 ### Backend environment variables
 

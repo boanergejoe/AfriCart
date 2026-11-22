@@ -13,7 +13,7 @@
     "lint": "expo lint"
   },
   "dependencies": {
-    "@clerk/clerk-expo": "^2.19.6",
+    "@clerk/expo": "^4.17.4",
     "@expo/vector-icons": "^15.0.3",
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
@@ -22,6 +22,7 @@
     "@tanstack/react-query": "^5.90.11",
     "axios": "^1.13.2",
     "expo": "~54.0.25",
+    "expo-auth-session": "~7.0.11",
     "expo-blur": "~15.0.7",
     "expo-constants": "~18.0.10",
     "expo-font": "~14.0.9",
@@ -56,10 +57,10 @@
   },
   "private": true,
   "allowScripts": {
-    "@clerk/shared@3.36.0": true,
+    "@clerk/shared@4.48.3": true,
     "@sentry/cli@2.58.2": true,
     "browser-tabs-lock@1.3.0": true,
-    "core-js@3.41.0": true,
+    "core-js@3.47.0": true,
     "unrs-resolver@1.11.1": true
   }
 }

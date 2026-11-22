@@ -38,12 +38,16 @@ TanStack Query. It talks to the shared Express API in `../backend`.
 
 - `EXPO_PUBLIC_*` variables are bundled into the app and are public. Never put backend secrets in
   them; PesaPal and Cloudinary credentials stay in `backend/.env`.
-- Authentication is handled by Clerk. The root layout guards protected screens and the shared API
-  client attaches a fresh Clerk token to every request. Cache data is cleared when the signed-in
-  user changes.
+- Authentication is handled by the Clerk Core 3 Expo SDK (`@clerk/expo`). The root layout requires
+  an explicit publishable key, guards protected screens, and the shared API client attaches a fresh
+  Clerk token to every request. Token errors are treated as unauthenticated instead of crashing the
+  app. Cache data is cleared when the signed-in user changes.
 - On web, `app/(auth)/index.web.tsx` renders Clerk's sign-in-or-up component, so customers can
-  create an email/password account or use a configured social provider. Enable email/password in the
-  Clerk Dashboard. Native builds keep the Google/Apple sign-in screen.
+  create an email/password account or use a configured social provider. Enable **Email address** and
+  **Password** in the Clerk Dashboard, allow the deployed storefront origin and
+  `/payment/callback` redirect URL, and review any sign-up country blocklist. Native builds keep the
+  Google/Apple sign-in screen and need `expo-auth-session`, `expo-web-browser`, `expo-secure-store`,
+  and the `@clerk/expo`/`expo-secure-store` config plugins.
 - Vercel rewrites `/product/<id>` to the static `/product` page with the ID as a query parameter, so
   refreshing a product link works on the static site. PesaPal callbacks return to
   `app/payment/callback.tsx` through the backend redirect.

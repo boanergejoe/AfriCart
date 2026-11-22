@@ -1,8 +1,8 @@
 import { useEffect, type ReactNode } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import Head from "expo-router/head";
-import { ClerkProvider, useAuth } from "@clerk/clerk-expo";
-import { tokenCache } from "@clerk/clerk-expo/token-cache";
+import { ClerkProvider, useAuth } from "@clerk/expo";
+import { tokenCache } from "@clerk/expo/token-cache";
 import { QueryClientProvider } from "@tanstack/react-query";
 import * as Sentry from "@sentry/react-native";
 
@@ -12,6 +12,11 @@ import BrandLoader from "@/components/BrandLoader";
 import { queryClient } from "@/lib/queryClient";
 import palette from "@/lib/theme";
 import "../global.css";
+
+const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
+if (!publishableKey) {
+  throw new Error("Add EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY to mobile/.env before building the app.");
+}
 
 const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
 if (sentryDsn) {
@@ -46,7 +51,7 @@ function AuthGuard({ children }: { children: ReactNode }) {
 export default Sentry.wrap(function RootLayout() {
   return (
     <AppErrorBoundary>
-      <ClerkProvider publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
+      <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
         <AuthBridge>
           <QueryClientProvider client={queryClient}>
             <AuthGuard>

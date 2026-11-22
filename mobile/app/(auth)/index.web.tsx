@@ -1,4 +1,4 @@
-import { SignIn } from "@clerk/clerk-expo/web";
+import { SignIn } from "@clerk/expo/web";
 import { ScrollView, Text, View } from "react-native";
 
 import BrandLoader from "@/components/BrandLoader";
@@ -8,10 +8,10 @@ const clerkAppearance = {
   variables: {
     colorPrimary: palette.brand.DEFAULT,
     colorBackground: palette.light.background,
-    colorText: palette.light.text,
-    colorTextSecondary: palette.light.muted,
-    colorInputBackground: palette.light.background,
-    colorInputText: palette.light.text,
+    colorForeground: palette.light.text,
+    colorMutedForeground: palette.light.muted,
+    colorInput: palette.light.background,
+    colorInputForeground: palette.light.text,
     colorNeutral: palette.light.border,
     borderRadius: "0.85rem",
   },
@@ -38,6 +38,8 @@ const AuthWebScreen = () => (
         routing="hash"
         fallbackRedirectUrl="/"
         forceRedirectUrl="/"
+        signUpFallbackRedirectUrl="/"
+        signUpForceRedirectUrl="/"
         fallback={<BrandLoader label="Preparing secure sign-in…" />}
         appearance={clerkAppearance}
       />
