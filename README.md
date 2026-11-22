@@ -60,6 +60,10 @@ For a Vercel-hosted backend, add the same `PESAPAL_*` values to the Vercel proje
 environment settings and redeploy; local `backend/.env` values do not automatically reach Vercel.
 Never add consumer credentials to `EXPO_PUBLIC_*` variables.
 
+Password length is managed by Clerk, not by this repository. Clerk enforces a NIST-aligned minimum
+of 8 characters for password sign-in, which already satisfies a 5-character minimum. Password rules
+are configured in the Clerk Dashboard under **User & authentication → Password**.
+
 ---
 
 ## 🧪 `.env` Setup
