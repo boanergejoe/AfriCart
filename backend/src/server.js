@@ -71,7 +71,7 @@ app.get("/api/health", (req, res) => {
 });
 
 // make our app ready for deployment
-if (ENV.NODE_ENV === "production") {
+if (ENV.NODE_ENV === "production" && process.env.VERCEL !== "1") {
   app.use(express.static(path.join(__dirname, "../admin/dist")));
 
   app.get("/{*any}", (req, res) => {
@@ -86,4 +86,7 @@ const startServer = async () => {
   });
 };
 
-startServer();
+startServer().catch((error) => {
+  console.error("Unable to start server", error);
+  process.exitCode = 1;
+});

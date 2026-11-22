@@ -18,7 +18,7 @@
 - 📦 Order Management
 - 👥 Customer Management Page
 - 🛡️ Sentry Integration for monitoring & error tracking
-- 🚀 Deployment on Sevalla (API + Admin Dashboard)
+- 🚀 Deployable on Vercel (API + Admin Dashboard)
 - 🖼️ Product Image Slider
 - ⚡ Data Fetching & Caching with TanStack Query
 - 🧰 End-to-End Git & GitHub Workflow (branches, commits, PRs, code reviews)
@@ -121,12 +121,69 @@ For local development, use a backend URL reachable from the device (for example
 `http://10.0.2.2:3000/api` on the Android emulator); a physical phone needs your computer's LAN IP
 or a deployed HTTPS backend.
 
+## 🚀 Deploy on Vercel
+
+Deploy the backend and admin as **two separate Vercel projects** from this repository. The backend
+is an Express app (`backend/src/server.js`); Vercel detects and serves it as an Express deployment.
+The admin is a Vite single-page app. No Vercel-specific runtime dependency or custom backend build
+command is required.
+
+### Backend API project
+
+1. Import the repository as a new Vercel project.
+2. Set **Root Directory** to `backend` and leave the Framework Preset on **Express** (auto-detected).
+3. Use `npm ci` as the Install Command. Leave Build Command and Output Directory at their defaults.
+4. Add the backend variables described in [Backend environment variables](#backend-environment-variables)
+   to Vercel Project Settings. Set `CLIENT_URL` to the deployed admin origin and, when applicable,
+   `MOBILE_CLIENT_URL` to the mobile web app origin.
+5. Deploy and copy the backend deployment URL.
+
+### Admin dashboard project
+
+1. Import the same repository as another Vercel project.
+2. Set **Root Directory** to `admin` and Framework Preset to **Vite**.
+3. Use `npm ci` as the Install Command, `npm run build` as the Build Command, and `dist` as the
+   Output Directory.
+4. Add these environment variables in Project Settings:
+
+   - `VITE_CLERK_PUBLISHABLE_KEY` — the Clerk publishable key.
+   - `VITE_API_URL` — the backend URL followed by `/api`, for example
+     `https://<backend-project>.vercel.app/api`.
+   - `VITE_SENTRY_DSN` — optional Sentry DSN.
+
+5. Deploy. The [admin Vercel config](admin/vercel.json) rewrites browser routes to the Vite entry
+   point so routes such as `/login` and `/orders` work when opened directly or refreshed.
+
+Add the environment variables to the Vercel environments where they are needed (Production,
+Preview, and Development), then redeploy after changing them. Vite variables are embedded at build
+time.
+
+### Backend environment variables
+
+Configure these in the backend project's Vercel settings. Do not commit credentials or put backend
+secrets in `VITE_*` variables.
+
+- Required for the API: `DB_URL`, `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `ADMIN_EMAIL`,
+  `CLIENT_URL`, and `MOBILE_CLIENT_URL` if the mobile app calls the API.
+- For Inngest: `INNGEST_SIGNING_KEY`.
+- For product image uploads: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and
+  `CLOUDINARY_API_SECRET`.
+- For Stripe: `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` when Stripe is enabled.
+- For PesaPal: `PESAPAL_ENV`, `PESAPAL_CONSUMER_KEY`, `PESAPAL_CONSUMER_SECRET`,
+  `PESAPAL_CURRENCY`, `PESAPAL_IPN_URL`, `PESAPAL_IPN_ID`, and `PESAPAL_CALLBACK_URL`.
+
+Use the backend deployment origin in `PESAPAL_IPN_URL`, ending in
+`/api/payment/pesapal/ipn`. `PESAPAL_CALLBACK_URL` must be the public mobile web callback URL.
+MongoDB transactions require a replica set (MongoDB Atlas is suitable). Vercel provides `PORT`;
+do not configure it manually.
+
+---
+
 ## 🔧 Run the Backend
 
 ```bash
-
 cd backend
-npm install
+npm ci
 npm run dev
 ```
 
@@ -134,10 +191,9 @@ npm run dev
 
 ## 🔧 Run the Admin
 
-```
-bash
+```bash
 cd admin
-npm install
+npm ci
 npm run dev
 ```
 
@@ -148,7 +204,8 @@ npm run dev
 ```
 bash
 cd mobile
-npm install
+npm ci
 npx expo start
-*And then scan the QR Code from your phone*
 ```
+
+Then scan the QR code from your phone.
