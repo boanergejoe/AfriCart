@@ -1,10 +1,14 @@
 import { AlertCircleIcon, InboxIcon, LoaderCircleIcon } from "lucide-react";
 
-function LoadingState({ label = "Loading data…" }) {
+function LoadingState({ label = "Loading data…", compact = false }) {
   return (
-    <div role="status" aria-live="polite" className="flex min-h-56 flex-col items-center justify-center gap-3 py-12">
+    <div
+      role="status"
+      aria-live="polite"
+      className={`flex flex-col items-center justify-center gap-3 ${compact ? "py-10" : "min-h-56 py-12"}`}
+    >
       <LoaderCircleIcon className="size-8 animate-spin text-primary" aria-hidden="true" />
-      <span className="text-sm text-base-content/70">{label}</span>
+      <span className="text-sm text-base-content/60">{label}</span>
     </div>
   );
 }

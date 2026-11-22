@@ -121,7 +121,7 @@ const RatingModal = ({
                   )}
                 </TouchableOpacity>
                 <TouchableOpacity
-                  className="bg-surface-lighter rounded-2xl py-4 items-center border border-background-lighter"
+                  className="bg-surface-light rounded-2xl py-4 items-center border border-background-lighter"
                   activeOpacity={0.7}
                   onPress={onClose}
                   disabled={isSubmitting}

@@ -27,5 +27,8 @@
     "inngest": "^3.54.0",
     "mongoose": "^8.19.3",
     "multer": "^2.0.2"
+  },
+  "allowScripts": {
+    "protobufjs@7.6.6": true
   }
 }

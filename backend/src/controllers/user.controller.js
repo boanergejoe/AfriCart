@@ -2,15 +2,35 @@ import mongoose from "mongoose";
 import { User } from "../models/user.model.js";
 import { Product } from "../models/product.model.js";
 
+const ADDRESS_FIELDS = ["fullName", "streetAddress", "city", "state", "zipCode", "phoneNumber"];
+
+const isValidPhoneNumber = (value) =>
+  /^\+?\d{7,15}$/.test(String(value || "").replace(/[^\d+]/g, ""));
+
+const readAddressInput = (body, partial = false) => {
+  const address = {};
+  for (const field of ADDRESS_FIELDS) {
+    if (body[field] === undefined) continue;
+    if (typeof body[field] !== "string") return { error: `${field} must be text.` };
+    const value = body[field].trim();
+    if (!partial || value) address[field] = value;
+  }
+  return { address };
+};
+
 export async function addAddress(req, res) {
   try {
-    const { label, fullName, streetAddress, city, state, zipCode, phoneNumber, isDefault } =
-      req.body;
+    const { label, isDefault } = req.body;
+    const { address, error } = readAddressInput(req.body);
+    if (error) return res.status(400).json({ message: error });
 
     const user = req.user;
 
-    if (!fullName || !streetAddress || !city || !state || !zipCode) {
+    if (ADDRESS_FIELDS.some((field) => !address[field])) {
       return res.status(400).json({ message: "Missing required address fields" });
+    }
+    if (!isValidPhoneNumber(address.phoneNumber)) {
+      return res.status(400).json({ message: "Enter a valid phone number for this address." });
     }
 
     // if this is set as default, unset all other defaults
@@ -21,13 +41,8 @@ export async function addAddress(req, res) {
     }
 
     user.addresses.push({
-      label,
-      fullName,
-      streetAddress,
-      city,
-      state,
-      zipCode,
-      phoneNumber,
+      label: typeof label === "string" ? label.trim() : label,
+      ...address,
       isDefault: isDefault || false,
     });
 
@@ -53,8 +68,9 @@ export async function getAddresses(req, res) {
 
 export async function updateAddress(req, res) {
   try {
-    const { label, fullName, streetAddress, city, state, zipCode, phoneNumber, isDefault } =
-      req.body;
+    const { label, isDefault } = req.body;
+    const { address: updates, error } = readAddressInput(req.body, true);
+    if (error) return res.status(400).json({ message: error });
 
     const { addressId } = req.params;
 
@@ -62,6 +78,9 @@ export async function updateAddress(req, res) {
     const address = user.addresses.id(addressId);
     if (!address) {
       return res.status(404).json({ message: "Address not found" });
+    }
+    if (updates.phoneNumber && !isValidPhoneNumber(updates.phoneNumber)) {
+      return res.status(400).json({ message: "Enter a valid phone number for this address." });
     }
 
     // if this is set as default, unset all other defaults
@@ -71,13 +90,8 @@ export async function updateAddress(req, res) {
       });
     }
 
-    address.label = label || address.label;
-    address.fullName = fullName || address.fullName;
-    address.streetAddress = streetAddress || address.streetAddress;
-    address.city = city || address.city;
-    address.state = state || address.state;
-    address.zipCode = zipCode || address.zipCode;
-    address.phoneNumber = phoneNumber || address.phoneNumber;
+    if (label !== undefined) address.label = typeof label === "string" ? label.trim() : label;
+    Object.assign(address, updates);
     address.isDefault = isDefault !== undefined ? isDefault : address.isDefault;
 
     await user.save();

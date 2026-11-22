@@ -58,6 +58,7 @@ export interface Order {
     paymentMethod?: string;
     confirmationCode?: string;
     inventoryIssue?: boolean;
+    stockRestored?: boolean;
   };
   totalPrice: number;
   status: "pending" | "shipped" | "delivered";

@@ -4,6 +4,7 @@ import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
 import {
   ActivityIndicator,
+  Platform,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -81,7 +82,11 @@ const ProductDetailScreen = () => {
       <View className="absolute top-0 left-0 right-0 z-10 px-6 pt-20 pb-4 flex-row items-center justify-between">
         <TouchableOpacity
           className="bg-black/50 backdrop-blur-xl w-12 h-12 rounded-full items-center justify-center"
-          onPress={() => router.back()}
+          onPress={() => {
+            // A product URL can be opened directly on the web with no app history.
+            if (Platform.OS === "web") router.replace("/(tabs)");
+            else router.back();
+          }}
           activeOpacity={0.7}
           accessibilityRole="button"
           accessibilityLabel="Go back"

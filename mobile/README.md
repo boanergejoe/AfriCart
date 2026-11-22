@@ -44,8 +44,9 @@ TanStack Query. It talks to the shared Express API in `../backend`.
   app. Cache data is cleared when the signed-in user changes.
 - On web, `app/(auth)/index.web.tsx` renders Clerk's sign-in-or-up component, so customers can
   create an email/password account or use a configured social provider. Enable **Email address** and
-  **Password** in the Clerk Dashboard, allow the deployed storefront origin and
-  `/payment/callback` redirect URL, and review any sign-up country blocklist. Native builds keep the
+  **Password** in the Clerk Dashboard and allow the deployed storefront origin and
+  `/payment/callback` redirect URL. The `communication.blocked_country_codes` setting blocks only
+  SMS delivery; it does not block email/password registration. Native builds keep the
   Google/Apple sign-in screen and need `expo-auth-session`, `expo-web-browser`, `expo-secure-store`,
   and the `@clerk/expo`/`expo-secure-store` config plugins.
 - Vercel rewrites `/product/<id>` to the static `/product` page with the ID as a query parameter, so

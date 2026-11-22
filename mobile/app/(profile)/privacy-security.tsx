@@ -27,8 +27,9 @@ type AccountOption = {
 
 function PrivacyAndSecurityScreen() {
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
-  const [biometricEnabled, setBiometricEnabled] = useState(true);
-  const [pushNotifications, setPushNotifications] = useState(true);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [pushNotifications, setPushNotifications] = useState(false);
+  // Order emails are always sent; the switch is read-only until preferences are built.
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [marketingEmails, setMarketingEmails] = useState(false);
   const [shareData, setShareData] = useState(false);
@@ -45,7 +46,7 @@ function PrivacyAndSecurityScreen() {
       id: "two-factor",
       icon: "shield-checkmark-outline",
       title: "Two-Factor Authentication",
-      description: "Add an extra layer of security",
+      description: "Coming soon — managed in Clerk account settings",
       type: "toggle",
       value: twoFactorEnabled,
     },
@@ -53,7 +54,7 @@ function PrivacyAndSecurityScreen() {
       id: "biometric",
       icon: "finger-print-outline",
       title: "Biometric Login",
-      description: "Use Face ID or Touch ID",
+      description: "Coming soon — device sign-in is not enabled",
       type: "toggle",
       value: biometricEnabled,
     },
@@ -64,7 +65,7 @@ function PrivacyAndSecurityScreen() {
       id: "push",
       icon: "notifications-outline",
       title: "Push Notifications",
-      description: "Receive push notifications",
+      description: "Coming soon",
       type: "toggle",
       value: pushNotifications,
     },
@@ -72,7 +73,7 @@ function PrivacyAndSecurityScreen() {
       id: "email",
       icon: "mail-outline",
       title: "Email Notifications",
-      description: "Receive order updates via email",
+      description: "Always on — order emails are sent by AfriCart",
       type: "toggle",
       value: emailNotifications,
     },
@@ -80,7 +81,7 @@ function PrivacyAndSecurityScreen() {
       id: "marketing",
       icon: "megaphone-outline",
       title: "Marketing Emails",
-      description: "Receive promotional emails",
+      description: "Coming soon",
       type: "toggle",
       value: marketingEmails,
     },
@@ -88,7 +89,7 @@ function PrivacyAndSecurityScreen() {
       id: "data",
       icon: "analytics-outline",
       title: "Share Usage Data",
-      description: "Help us improve the app",
+      description: "Coming soon",
       type: "toggle",
       value: shareData,
     },
@@ -155,6 +156,7 @@ function PrivacyAndSecurityScreen() {
         {setting.type === "toggle" ? (
           <Switch
             value={setting.value}
+            disabled
             onValueChange={(value) => handleToggle(setting.id, value)}
             thumbColor={palette.text.primary}
             trackColor={{ false: palette.surface.DEFAULT, true: palette.primary.DEFAULT }}

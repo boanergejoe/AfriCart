@@ -22,7 +22,10 @@ export function ToastProvider({ children }) {
     (message, tone = "info") => {
       const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       setToasts((current) => [...current.slice(-2), { id, message, tone }]);
-      timeouts.current.set(id, setTimeout(() => dismiss(id), 4500));
+      // Errors stay visible until dismissed so a failed save/delete is not missed.
+      if (tone !== "error") {
+        timeouts.current.set(id, setTimeout(() => dismiss(id), 4500));
+      }
     },
     [dismiss]
   );
@@ -41,7 +44,11 @@ export function ToastProvider({ children }) {
         {toasts.map((toast) => {
           const { icon: Icon, className } = TOAST_STYLES[toast.tone] || TOAST_STYLES.info;
           return (
-            <div key={toast.id} className={`alert shadow-lg ${className}`} role="status">
+            <div
+              key={toast.id}
+              className={`alert shadow-lg ${className}`}
+              role={toast.tone === "error" ? "alert" : "status"}
+            >
               <Icon className="size-5 shrink-0" aria-hidden="true" />
               <span className="text-sm">{toast.message}</span>
               <button

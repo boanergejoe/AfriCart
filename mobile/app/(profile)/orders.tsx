@@ -143,6 +143,16 @@ function OrdersScreen() {
                         Payment: {capitalizeFirstLetter(order.paymentResult?.status || "unverified")}
                         {order.paymentResult?.provider === "pesapal" ? " · PesaPal" : ""}
                       </Text>
+                      {order.paymentResult?.inventoryIssue && (
+                        <Text className="text-accent-warning text-xs font-semibold mb-2">
+                          Stock issue — your cart is saved and support will contact you.
+                        </Text>
+                      )}
+                      {order.paymentResult?.stockRestored && (
+                        <Text className="text-text-secondary text-xs mb-2">
+                          Stock was restored after a payment reversal.
+                        </Text>
+                      )}
                       <View
                         className="self-start px-3 py-1.5 rounded-full"
                         style={{ backgroundColor: getStatusColor(order.status) + "20" }}

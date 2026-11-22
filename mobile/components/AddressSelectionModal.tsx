@@ -18,14 +18,21 @@ const AddressSelectionModal = ({
   onProceed,
   isProcessing,
 }: AddressSelectionModalProps) => {
-  const [selectedAddress, setSelectedAddress] = useState<Address | null>(null);
-  const { addresses, isLoading: addressesLoading } = useAddresses();
+  const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
+  const { addresses: fetchedAddresses, isLoading, isError, refetch } = useAddresses();
+  const addresses = fetchedAddresses || [];
+
+  // Preselect the default address without a state-syncing effect.
+  const selectedAddress =
+    addresses.find((address) => address._id === selectedAddressId) ||
+    addresses.find((address) => address.isDefault) ||
+    addresses[0] ||
+    null;
 
   return (
-    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View className="flex-1 bg-black/50 justify-end">
         <View className="bg-background rounded-t-3xl h-1/2">
-          {/* Modal Header */}
           <View className="flex-row items-center justify-between p-6 border-b border-surface">
             <Text className="text-text-primary text-2xl font-bold">Select Address</Text>
             <TouchableOpacity onPress={onClose} className="bg-surface rounded-full p-2">
@@ -33,56 +40,76 @@ const AddressSelectionModal = ({
             </TouchableOpacity>
           </View>
 
-          {/* ADDRESSES LIST */}
           <ScrollView className="flex-1 p-6">
-            {addressesLoading ? (
+            {isLoading ? (
               <View className="py-8">
                 <ActivityIndicator size="large" color={palette.accent.info} />
               </View>
+            ) : isError ? (
+              <View className="py-8 items-center">
+                <Text className="text-text-secondary text-center mb-4">
+                  We could not load your saved addresses.
+                </Text>
+                <TouchableOpacity
+                  onPress={() => void refetch()}
+                  className="bg-primary rounded-2xl px-6 py-3"
+                >
+                  <Text className="text-background font-bold">Try again</Text>
+                </TouchableOpacity>
+              </View>
+            ) : addresses.length === 0 ? (
+              <View className="py-8 items-center">
+                <Text className="text-text-secondary text-center">
+                  Add a delivery address from your profile before checking out.
+                </Text>
+              </View>
             ) : (
               <View className="gap-4">
-                {addresses?.map((address: Address) => (
-                  <TouchableOpacity
-                    key={address._id}
-                    className={`bg-surface rounded-3xl p-6 border-2 ${
-                      selectedAddress?._id === address._id
-                        ? "border-primary"
-                        : "border-background-lighter"
-                    }`}
-                    activeOpacity={0.7}
-                    onPress={() => setSelectedAddress(address)}
-                  >
-                    <View className="flex-row items-start justify-between">
-                      <View className="flex-1">
-                        <View className="flex-row items-center mb-3">
-                          <Text className="text-primary font-bold text-lg mr-2">
-                            {address.label}
+                {addresses.map((address) => {
+                  const isSelected = selectedAddress?._id === address._id;
+                  return (
+                    <TouchableOpacity
+                      key={address._id}
+                      className={`bg-surface rounded-3xl p-6 border-2 ${
+                        isSelected ? "border-primary" : "border-background-lighter"
+                      }`}
+                      activeOpacity={0.7}
+                      onPress={() => setSelectedAddressId(address._id)}
+                    >
+                      <View className="flex-row items-start justify-between">
+                        <View className="flex-1">
+                          <View className="flex-row items-center mb-3">
+                            <Text className="text-primary font-bold text-lg mr-2">
+                              {address.label}
+                            </Text>
+                            {address.isDefault && (
+                              <View className="bg-primary/20 rounded-full px-3 py-1">
+                                <Text className="text-primary text-sm font-semibold">Default</Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text className="text-text-primary font-semibold text-lg mb-2">
+                            {address.fullName}
                           </Text>
-                          {address.isDefault && (
-                            <View className="bg-primary/20 rounded-full px-3 py-1">
-                              <Text className="text-primary text-sm font-semibold">Default</Text>
-                            </View>
-                          )}
+                          <Text className="text-text-secondary text-base leading-6 mb-1">
+                            {address.streetAddress}
+                          </Text>
+                          <Text className="text-text-secondary text-base mb-2">
+                            {address.city}, {address.state} {address.zipCode}
+                          </Text>
+                          <Text className="text-text-secondary text-base">
+                            {address.phoneNumber}
+                          </Text>
                         </View>
-                        <Text className="text-text-primary font-semibold text-lg mb-2">
-                          {address.fullName}
-                        </Text>
-                        <Text className="text-text-secondary text-base leading-6 mb-1">
-                          {address.streetAddress}
-                        </Text>
-                        <Text className="text-text-secondary text-base mb-2">
-                          {address.city}, {address.state} {address.zipCode}
-                        </Text>
-                        <Text className="text-text-secondary text-base">{address.phoneNumber}</Text>
+                        {isSelected && (
+                          <View className="bg-primary rounded-full p-2 ml-3">
+                            <Ionicons name="checkmark" size={24} color={palette.onPrimary} />
+                          </View>
+                        )}
                       </View>
-                      {selectedAddress?._id === address._id && (
-                        <View className="bg-primary rounded-full p-2 ml-3">
-                          <Ionicons name="checkmark" size={24} color={palette.onPrimary} />
-                        </View>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                ))}
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             )}
           </ScrollView>

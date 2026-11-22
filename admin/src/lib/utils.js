@@ -3,10 +3,15 @@ export const capitalizeText = (text) => {
   return text.charAt(0).toUpperCase() + text.slice(1);
 };
 
-export const getErrorMessage = (error, fallback = "Something went wrong. Please try again.") =>
-  error?.response?.data?.message ||
-  error?.response?.data?.error ||
-  (error?.message === "Network Error" ? "Cannot reach the server. Check your connection." : fallback);
+export const getErrorMessage = (error, fallback = "Something went wrong. Please try again.") => {
+  const candidate =
+    error?.response?.data?.message ||
+    error?.response?.data?.error ||
+    (error?.message === "Network Error" ? "Cannot reach the server. Check your connection." : fallback);
+
+  const message = typeof candidate === "string" ? candidate : JSON.stringify(candidate);
+  return message.length > 240 ? `${message.slice(0, 237)}…` : message;
+};
 
 export const getOrderStatusBadge = (status) => {
   switch (status?.toLowerCase()) {
@@ -45,6 +50,6 @@ export const formatDate = (dateString) => {
 export const formatCurrency = (amount) => {
   const value = Number(amount);
   return Number.isFinite(value)
-    ? value.toLocaleString(undefined, { style: "currency", currency: "USD" })
+    ? value.toLocaleString("en-US", { style: "currency", currency: "USD" })
     : "$0.00";
 };

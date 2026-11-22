@@ -1,21 +1,23 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SearchIcon, UsersIcon } from "lucide-react";
 
 import { EmptyState, ErrorState, LoadingState } from "../components/StateViews.jsx";
 import ImageWithFallback from "../components/ImageWithFallback.jsx";
 import { customerApi } from "../lib/api.js";
+import { useDebouncedValue } from "../lib/useDebouncedValue.js";
 import { formatDate, getErrorMessage } from "../lib/utils.js";
 
 const PAGE_SIZE = 12;
 
 function CustomersPage() {
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
   const [page, setPage] = useState(1);
 
   const params = useMemo(
-    () => ({ search: search.trim() || undefined, page, limit: PAGE_SIZE }),
-    [search, page]
+    () => ({ search: debouncedSearch.trim() || undefined, page, limit: PAGE_SIZE }),
+    [debouncedSearch, page]
   );
 
   const customersQuery = useQuery({
@@ -24,6 +26,13 @@ function CustomersPage() {
   });
 
   const { customers = [], total = 0, pages = 1 } = customersQuery.data || {};
+  const currentPage = Math.min(page, pages);
+
+  useEffect(() => {
+    if (page <= pages) return undefined;
+    const timer = setTimeout(() => setPage(pages), 0);
+    return () => clearTimeout(timer);
+  }, [page, pages]);
 
   return (
     <div className="space-y-6">
@@ -33,7 +42,7 @@ function CustomersPage() {
       </header>
 
       <section className="surface flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
-        <label className="input input-bordered flex flex-1 items-center gap-2">
+        <label className="input flex flex-1 items-center gap-2">
           <SearchIcon className="size-4 text-base-content/50" aria-hidden="true" />
           <span className="sr-only">Search customers</span>
           <input
@@ -105,18 +114,18 @@ function CustomersPage() {
           <button
             type="button"
             className="btn btn-sm"
-            disabled={page <= 1}
+            disabled={currentPage <= 1}
             onClick={() => setPage((current) => current - 1)}
           >
             Previous
           </button>
           <span className="text-sm muted">
-            Page {page} of {pages}
+            Page {currentPage} of {pages}
           </span>
           <button
             type="button"
             className="btn btn-sm"
-            disabled={page >= pages}
+            disabled={currentPage >= pages}
             onClick={() => setPage((current) => current + 1)}
           >
             Next

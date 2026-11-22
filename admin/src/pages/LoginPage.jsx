@@ -6,7 +6,6 @@ import {
   LockKeyholeIcon,
   MailIcon,
   ShieldCheckIcon,
-  ShoppingBagIcon,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router";
 
@@ -57,11 +56,9 @@ function LoginPage() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-8 bg-base-200 px-4 py-10">
       <div className="text-center">
-        <div className="mx-auto mb-3 flex size-12 items-center justify-center rounded-2xl bg-primary text-primary-content">
-          <ShoppingBagIcon className="size-7" aria-hidden="true" />
-        </div>
-        <h1 className="text-3xl font-bold tracking-tight">AfriCart</h1>
-        <p className="muted mt-1 text-sm">Admin console · Authorized staff only</p>
+        <img src="/africart.svg" alt="" className="mx-auto mb-3 size-14 rounded-2xl" />
+        <h1 className="text-3xl font-bold tracking-tight">AfriCart Admin</h1>
+        <p className="muted mt-1 text-sm">Store operations · Authorized staff only</p>
       </div>
 
       <div className="surface w-full max-w-md p-4 sm:p-6">
@@ -77,11 +74,14 @@ function LoginPage() {
             </div>
           )}
 
-          <div className="form-control !gap-1">
-            <span className="label-text font-medium">Email address</span>
-            <div className="input input-bordered flex w-full items-center gap-2">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium" htmlFor="admin-email">
+              Email address
+            </label>
+            <div className="input flex w-full items-center gap-2">
               <MailIcon className="size-4 text-base-content/50" aria-hidden="true" />
               <input
+                id="admin-email"
                 type="email"
                 name="email"
                 value={form.email}
@@ -95,11 +95,14 @@ function LoginPage() {
             </div>
           </div>
 
-          <div className="form-control !gap-1">
-            <span className="label-text font-medium">Password</span>
-            <div className="input input-bordered flex w-full items-center gap-2">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium" htmlFor="admin-password">
+              Password
+            </label>
+            <div className="input flex w-full items-center gap-2">
               <LockKeyholeIcon className="size-4 text-base-content/50" aria-hidden="true" />
               <input
+                id="admin-password"
                 type={showPassword ? "text" : "password"}
                 name="password"
                 value={form.password}

@@ -40,7 +40,11 @@ function AuthGuard({ children }: { children: ReactNode }) {
     if (!isLoaded) return;
 
     const inAuthGroup = segments[0] === "(auth)";
-    if (!isSignedIn && !inAuthGroup) router.replace("/(auth)");
+    // PesaPal returns the browser here with payment query parameters. Let the
+    // screen render even if the Clerk session is cold so the receipt is not lost.
+    const isPaymentCallback = segments[0] === "payment" && segments[1] === "callback";
+
+    if (!isSignedIn && !inAuthGroup && !isPaymentCallback) router.replace("/(auth)");
     else if (isSignedIn && inAuthGroup) router.replace("/(tabs)");
   }, [isLoaded, isSignedIn, segments, router]);
 
@@ -54,12 +58,13 @@ export default Sentry.wrap(function RootLayout() {
       <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
         <AuthBridge>
           <QueryClientProvider client={queryClient}>
+            {/* Keep head metadata outside AuthGuard so static exports always ship a title. */}
+            <Head>
+              <title>AfriCart</title>
+              <meta name="description" content="Shop quality products with AfriCart." />
+              <meta name="theme-color" content={palette.brand.DEFAULT} />
+            </Head>
             <AuthGuard>
-              <Head>
-                <title>AfriCart</title>
-                <meta name="description" content="Shop quality products with AfriCart." />
-                <meta name="theme-color" content={palette.brand.DEFAULT} />
-              </Head>
               <Stack screenOptions={{ headerShown: false }} />
             </AuthGuard>
           </QueryClientProvider>

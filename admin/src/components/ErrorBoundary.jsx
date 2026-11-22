@@ -10,9 +10,11 @@ class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    Sentry.captureException(error, {
-      extra: { componentStack: info.componentStack ?? "unavailable" },
-    });
+    if (import.meta.env.VITE_SENTRY_DSN) {
+      Sentry.captureException(error, {
+        extra: { componentStack: info.componentStack ?? "unavailable" },
+      });
+    }
   }
 
   render() {

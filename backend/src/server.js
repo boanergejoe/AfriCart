@@ -49,7 +49,8 @@ app.use(async (_req, _res, next) => {
   }
 });
 
-app.use("/api/payment", express.json(), paymentRoutes);
+// PesaPal IPNs may be sent as form data; accept both content types before route validation.
+app.use("/api/payment", express.json(), express.urlencoded({ extended: false }), paymentRoutes);
 
 app.use(express.json());
 

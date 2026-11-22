@@ -14,6 +14,7 @@ import { EmptyState, ErrorState, LoadingState } from "../components/StateViews.j
 import ImageWithFallback from "../components/ImageWithFallback.jsx";
 import { productApi } from "../lib/api.js";
 import { useToast } from "../lib/toast.js";
+import { useDebouncedValue } from "../lib/useDebouncedValue.js";
 import { formatCurrency, getErrorMessage, getStockStatusBadge } from "../lib/utils.js";
 
 const EMPTY_FORM = { name: "", category: "", price: "", stock: "", description: "" };
@@ -26,6 +27,7 @@ function ProductsPage() {
   const nameInputRef = useRef(null);
 
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
   const [category, setCategory] = useState("");
   const [page, setPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
@@ -37,8 +39,13 @@ function ProductsPage() {
   const [productToDelete, setProductToDelete] = useState(null);
 
   const queryParams = useMemo(
-    () => ({ search: search.trim() || undefined, category: category || undefined, page, limit: PAGE_SIZE }),
-    [search, category, page]
+    () => ({
+      search: debouncedSearch.trim() || undefined,
+      category: category || undefined,
+      page,
+      limit: PAGE_SIZE,
+    }),
+    [debouncedSearch, category, page]
   );
 
   const productsQuery = useQuery({
@@ -133,17 +140,22 @@ function ProductsPage() {
       setImageError("Each image must be 5 MB or smaller.");
       return;
     }
-    if (previews.length - removedImages.length + files.length > 3) {
-      setImageError("A product can have at most 3 images.");
+    const availableSlots = 3 - previews.length;
+    if (availableSlots <= 0) {
+      setImageError("A product can have at most 3 images. Remove one before adding another.");
       return;
     }
 
-    previews.filter((preview) => preview.isBlob).forEach((preview) => URL.revokeObjectURL(preview.url));
+    const acceptedFiles = files.slice(0, availableSlots);
     setPreviews((current) => [
-      ...current.filter((preview) => !preview.isBlob),
-      ...files.map((file) => ({ url: URL.createObjectURL(file), isBlob: true, file })),
+      ...current,
+      ...acceptedFiles.map((file) => ({ url: URL.createObjectURL(file), isBlob: true, file })),
     ]);
-    setImageError("");
+    setImageError(
+      acceptedFiles.length < files.length
+        ? `Added ${acceptedFiles.length} image(s). A product can have at most 3 images.`
+        : ""
+    );
   };
 
   const removePreview = (index) => {
@@ -173,6 +185,13 @@ function ProductsPage() {
   };
 
   const { products = [], total = 0, pages = 1 } = productsQuery.data || {};
+  const currentPage = Math.min(page, pages);
+
+  useEffect(() => {
+    if (page <= pages) return undefined;
+    const timer = setTimeout(() => setPage(pages), 0);
+    return () => clearTimeout(timer);
+  }, [page, pages]);
 
   return (
     <div className="space-y-6">
@@ -188,7 +207,7 @@ function ProductsPage() {
       </header>
 
       <section className="surface flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
-        <label className="input input-bordered flex flex-1 items-center gap-2">
+        <label className="input flex flex-1 items-center gap-2">
           <SearchIcon className="size-4 text-base-content/50" aria-hidden="true" />
           <span className="sr-only">Search products</span>
           <input
@@ -202,7 +221,7 @@ function ProductsPage() {
           />
         </label>
         <select
-          className="select select-bordered w-full sm:w-52"
+          className="select w-full sm:w-52"
           value={category}
           onChange={(event) => {
             setCategory(event.target.value);
@@ -321,18 +340,18 @@ function ProductsPage() {
           <button
             type="button"
             className="btn btn-sm"
-            disabled={page <= 1}
+            disabled={currentPage <= 1}
             onClick={() => setPage((current) => current - 1)}
           >
             Previous
           </button>
           <span className="text-sm muted">
-            Page {page} of {pages}
+            Page {currentPage} of {pages}
           </span>
           <button
             type="button"
             className="btn btn-sm"
-            disabled={page >= pages}
+            disabled={currentPage >= pages}
             onClick={() => setPage((current) => current + 1)}
           >
             Next
@@ -356,6 +375,7 @@ function ProductsPage() {
                 type="button"
                 className="btn btn-circle btn-ghost btn-sm"
                 onClick={closeModal}
+                disabled={saveMutation.isPending}
                 aria-label="Close product form"
               >
                 <XIcon className="size-5" />
@@ -364,27 +384,27 @@ function ProductsPage() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="form-control">
-                  <label className="label" htmlFor="product-name">
-                    <span className="label-text font-medium">Product name</span>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium" htmlFor="product-name">
+                    Product name
                   </label>
                   <input
                     id="product-name"
                     ref={nameInputRef}
-                    className="input input-bordered w-full"
+                    className="input w-full"
                     value={form.name}
                     onChange={(event) => setForm({ ...form, name: event.target.value })}
                     maxLength={120}
                     required
                   />
                 </div>
-                <div className="form-control">
-                  <label className="label" htmlFor="product-category">
-                    <span className="label-text font-medium">Category</span>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium" htmlFor="product-category">
+                    Category
                   </label>
                   <select
                     id="product-category"
-                    className="select select-bordered w-full"
+                    className="select w-full"
                     value={form.category}
                     onChange={(event) => setForm({ ...form, category: event.target.value })}
                     required
@@ -400,31 +420,31 @@ function ProductsPage() {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="form-control">
-                  <label className="label" htmlFor="product-price">
-                    <span className="label-text font-medium">Price (USD)</span>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium" htmlFor="product-price">
+                    Price (USD)
                   </label>
                   <input
                     id="product-price"
                     type="number"
                     min="0"
                     step="0.01"
-                    className="input input-bordered w-full"
+                    className="input w-full"
                     value={form.price}
                     onChange={(event) => setForm({ ...form, price: event.target.value })}
                     required
                   />
                 </div>
-                <div className="form-control">
-                  <label className="label" htmlFor="product-stock">
-                    <span className="label-text font-medium">Stock</span>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium" htmlFor="product-stock">
+                    Stock
                   </label>
                   <input
                     id="product-stock"
                     type="number"
                     min="0"
                     step="1"
-                    className="input input-bordered w-full"
+                    className="input w-full"
                     value={form.stock}
                     onChange={(event) => setForm({ ...form, stock: event.target.value })}
                     required
@@ -432,13 +452,13 @@ function ProductsPage() {
                 </div>
               </div>
 
-              <div className="form-control">
-                <label className="label" htmlFor="product-description">
-                  <span className="label-text font-medium">Description</span>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium" htmlFor="product-description">
+                  Description
                 </label>
                 <textarea
                   id="product-description"
-                  className="textarea textarea-bordered h-24 w-full"
+                  className="textarea h-24 w-full"
                   value={form.description}
                   onChange={(event) => setForm({ ...form, description: event.target.value })}
                   maxLength={1000}
@@ -446,15 +466,19 @@ function ProductsPage() {
                 />
               </div>
 
-              <div className="form-control">
-                <label className="label" htmlFor="product-images">
-                  <span className="label-text font-medium">Images</span>
-                  <span className="label-text-alt">JPEG, PNG or WebP · up to 3 · 5 MB each</span>
-                </label>
+              <div className="flex flex-col gap-1.5">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <label className="text-sm font-medium" htmlFor="product-images">
+                    Images
+                  </label>
+                  <span className="text-xs text-base-content/60">
+                    JPEG, PNG or WebP · up to 3 · 5 MB each
+                  </span>
+                </div>
                 <input
                   id="product-images"
                   type="file"
-                  className="file-input file-input-bordered w-full"
+                  className="file-input w-full"
                   accept="image/jpeg,image/png,image/webp"
                   multiple
                   onChange={handleImageChange}
@@ -503,7 +527,14 @@ function ProductsPage() {
               </div>
             </form>
           </div>
-          <button type="button" className="modal-backdrop" onClick={closeModal} aria-label="Close dialog" />
+          <button
+            type="button"
+            className="modal-backdrop"
+            onClick={() => {
+              if (!saveMutation.isPending) closeModal();
+            }}
+            aria-label="Close dialog"
+          />
         </div>
       )}
 

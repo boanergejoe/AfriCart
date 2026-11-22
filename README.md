@@ -88,8 +88,11 @@ Dashboard. In the Clerk Dashboard:
   options** so customers can register without a social account.
 - Add the deployed storefront origin and its `/payment/callback` route to the allowed origins and
   redirect URLs for the Clerk application.
-- Review **Protect → Block sign-ups by country**. If your customer countries are on the blocklist
-  (for example NG or KE), remove them so intended customers can register.
+- Review **Protect → Block sign-ups by country** if that paid protection is enabled on your Clerk
+  instance; it is separate from the SMS country list and is off by default.
+- The `communication.blocked_country_codes` setting is an **SMS delivery** blocklist. It does not
+  block email/password registration, but allow your customer countries under **User & authentication
+  → Phone** if you enable phone OTP.
 - For native apps, enable the Native API and register the iOS bundle ID and Android package under
   **Native applications**.
 
@@ -170,8 +173,9 @@ single-page app; the mobile web app is exported as static files by Expo.
 2. Set **Root Directory** to `backend` and leave the Framework Preset on **Express** (auto-detected).
 3. Use `npm ci` as the Install Command. Leave Build Command and Output Directory at their defaults.
 4. Add the backend variables described in [Backend environment variables](#backend-environment-variables)
-   to Vercel Project Settings. Set `CLIENT_URL` to the deployed admin origin and, when applicable,
-   `MOBILE_CLIENT_URL` to the mobile web app origin.
+   to Vercel Project Settings. Set `CLIENT_URL` to the exact deployed admin origin and
+   `MOBILE_CLIENT_URL` to the exact customer storefront origin (no trailing path or slash). The
+   storefront origin is required for browser API access and the PesaPal return redirect.
 5. Deploy and copy the backend deployment URL.
 
 ### Admin dashboard project
@@ -192,14 +196,15 @@ single-page app; the mobile web app is exported as static files by Expo.
 ### Mobile web project
 
 1. Import the same repository as a third Vercel project.
-2. Set **Root Directory** to `mobile` and Framework Preset to **Other** (not Vite). Set Build
-   Command to `npm run build`, Install Command to `npm ci`, and Output Directory to `dist`.
-   The [mobile Vercel config](mobile/vercel.json) pins these settings and sets `framework` to
-   `null`, which prevents Vercel from auto-detecting Vite and running `vite build`.
+2. Set **Root Directory** to `mobile` and Framework Preset to **Other** (not Vite). The
+   [mobile Vercel config](mobile/vercel.json) pins the build command (`npm run build`), install
+   command (`env -u npm_config_cache_dir npm ci`), and output directory (`dist`). It also sets
+   `framework` to `null`, which prevents Vercel from auto-detecting Vite and running `vite build`.
 3. Add `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` and `EXPO_PUBLIC_API_URL` in Project Settings; set the
-   latter to the deployed backend origin followed by `/api`. `EXPO_PUBLIC_SENTRY_DSN` is optional.
-   These `EXPO_PUBLIC_*` values are embedded when the static bundle is built, so set them before
-   building and redeploy after changing them.
+   latter to the exact deployed backend origin followed by `/api` (no trailing path).
+   `EXPO_PUBLIC_SENTRY_DSN` is optional. The build fails clearly if `EXPO_PUBLIC_API_URL` is
+   missing. These `EXPO_PUBLIC_*` values are embedded when the static bundle is built, so set them
+   before building and redeploy after changing them.
 4. Deploy. Expo generates static route files for the web app, including the payment callback page.
 
 Add the environment variables to the Vercel environments where they are needed (Production,

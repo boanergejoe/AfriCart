@@ -9,7 +9,9 @@ const initialsFrom = (text = "") =>
     .join("") || "?";
 
 function ImageWithFallback({ src, alt, className = "", fallbackClassName = "", rounded = false }) {
-  const [failed, setFailed] = useState(false);
+  // Track the failed URL instead of a boolean so a changed src resets naturally.
+  const [failedSrc, setFailedSrc] = useState(null);
+  const failed = failedSrc === src && Boolean(src);
 
   if (!src || failed) {
     return (
@@ -28,7 +30,7 @@ function ImageWithFallback({ src, alt, className = "", fallbackClassName = "", r
       src={src}
       alt={alt}
       loading="lazy"
-      onError={() => setFailed(true)}
+      onError={() => setFailedSrc(src)}
       className={className}
     />
   );

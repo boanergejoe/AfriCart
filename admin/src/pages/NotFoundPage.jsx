@@ -8,8 +8,8 @@ function NotFoundPage() {
           <p className="text-6xl font-black text-primary">404</p>
           <h1 className="card-title">Page not found</h1>
           <p className="text-sm text-base-content/70">The page you requested does not exist.</p>
-          <Link className="btn btn-primary mt-4" to="/dashboard">
-            Back to dashboard
+          <Link className="btn btn-primary mt-4" to="/">
+            Back to admin home
           </Link>
         </div>
       </div>

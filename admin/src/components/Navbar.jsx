@@ -19,10 +19,12 @@ function Navbar() {
       </label>
 
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium uppercase tracking-widest text-base-content/50">
-          AfriCart Store
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary">
+          AfriCart Admin
         </p>
-        <h1 className="truncate text-lg font-semibold sm:text-xl">{getPageTitle(pathname)}</h1>
+        <p className="truncate text-sm text-base-content/60" aria-current="page">
+          {getPageTitle(pathname)}
+        </p>
       </div>
 
       <div className="flex items-center gap-3">

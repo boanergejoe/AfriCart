@@ -77,7 +77,7 @@ function DashboardPage() {
       <section className="surface overflow-hidden">
         <div className="flex items-center justify-between border-b border-base-200 px-5 py-4">
           <h2 className="text-lg font-semibold">Recent orders</h2>
-          <span className="badge badge-ghost badge-sm">Latest {recentOrders.length || 0}</span>
+          <span className="badge badge-ghost badge-sm">Last 5 orders</span>
         </div>
 
         {ordersQuery.isLoading ? (

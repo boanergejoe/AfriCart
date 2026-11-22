@@ -1,10 +1,12 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2Icon, ClipboardListIcon, SearchIcon } from "lucide-react";
 
+import ConfirmDialog from "../components/ConfirmDialog.jsx";
 import { EmptyState, ErrorState, LoadingState } from "../components/StateViews.jsx";
 import { orderApi } from "../lib/api.js";
 import { useToast } from "../lib/toast.js";
+import { useDebouncedValue } from "../lib/useDebouncedValue.js";
 import {
   formatCurrency,
   formatDate,
@@ -18,18 +20,20 @@ function OrdersPage() {
   const queryClient = useQueryClient();
   const { notify } = useToast();
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search);
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
   const [pendingOrderId, setPendingOrderId] = useState(null);
+  const [orderToFulfill, setOrderToFulfill] = useState(null);
 
   const params = useMemo(
     () => ({
-      search: search.trim() || undefined,
+      search: debouncedSearch.trim() || undefined,
       status: status || undefined,
       page,
       limit: PAGE_SIZE,
     }),
-    [search, status, page]
+    [debouncedSearch, status, page]
   );
 
   const ordersQuery = useQuery({
@@ -50,6 +54,21 @@ function OrdersPage() {
   });
 
   const { orders = [], total = 0, pages = 1 } = ordersQuery.data || {};
+  const currentPage = Math.min(page, pages);
+
+  useEffect(() => {
+    if (page <= pages) return undefined;
+    const timer = setTimeout(() => setPage(pages), 0);
+    return () => clearTimeout(timer);
+  }, [page, pages]);
+
+  const requestStatusChange = (order, nextStatus) => {
+    if (nextStatus === "delivered" && order.status === "shipped") {
+      setOrderToFulfill(order);
+      return;
+    }
+    statusMutation.mutate({ orderId: order._id, status: nextStatus });
+  };
 
   return (
     <div className="space-y-6">
@@ -59,7 +78,7 @@ function OrdersPage() {
       </header>
 
       <section className="surface flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
-        <label className="input input-bordered flex flex-1 items-center gap-2">
+        <label className="input flex flex-1 items-center gap-2">
           <SearchIcon className="size-4 text-base-content/50" aria-hidden="true" />
           <span className="sr-only">Search orders by customer</span>
           <input
@@ -73,7 +92,7 @@ function OrdersPage() {
           />
         </label>
         <select
-          className="select select-bordered w-full sm:w-48"
+          className="select w-full sm:w-48"
           value={status}
           onChange={(event) => {
             setStatus(event.target.value);
@@ -146,7 +165,11 @@ function OrdersPage() {
                       <td>
                         <div className="flex items-center gap-1 text-sm">
                           {isPaid && <CheckCircle2Icon className="size-4 text-success" aria-hidden="true" />}
-                          {isPaid ? "Verified" : "Awaiting payment"}
+                          {order.paymentResult?.status === "reversed"
+                            ? "Payment reversed"
+                            : isPaid
+                              ? "Verified"
+                              : "Awaiting payment"}
                         </div>
                         <div className="text-xs text-base-content/70">
                           {order.paymentResult?.provider === "pesapal" ? "PesaPal" : "Not recorded"}
@@ -154,20 +177,25 @@ function OrdersPage() {
                         {order.paymentResult?.inventoryIssue && (
                           <div className="text-xs text-error">Inventory review needed</div>
                         )}
+                        {order.paymentResult?.stockRestored && (
+                          <div className="text-xs text-warning">Stock restored after reversal</div>
+                        )}
                       </td>
                       <td>
                         {isPaid ? (
                           <select
-                            className="select select-bordered select-sm"
+                            className="select select-sm"
                             value={order.status}
                             disabled={isPending}
                             aria-label={`Status for order ${order._id}`}
-                            onChange={(event) =>
-                              statusMutation.mutate({ orderId: order._id, status: event.target.value })
-                            }
+                            onChange={(event) => requestStatusChange(order, event.target.value)}
                           >
-                            <option value="pending">Pending</option>
-                            <option value="shipped">Shipped</option>
+                            <option value="pending" disabled>
+                              Pending
+                            </option>
+                            <option value="shipped" disabled={order.status === "delivered"}>
+                              Shipped
+                            </option>
                             <option value="delivered">Delivered</option>
                           </select>
                         ) : (
@@ -191,18 +219,18 @@ function OrdersPage() {
           <button
             type="button"
             className="btn btn-sm"
-            disabled={page <= 1}
+            disabled={currentPage <= 1}
             onClick={() => setPage((current) => current - 1)}
           >
             Previous
           </button>
           <span className="text-sm muted">
-            Page {page} of {pages}
+            Page {currentPage} of {pages}
           </span>
           <button
             type="button"
             className="btn btn-sm"
-            disabled={page >= pages}
+            disabled={currentPage >= pages}
             onClick={() => setPage((current) => current + 1)}
           >
             Next
@@ -211,8 +239,21 @@ function OrdersPage() {
       )}
 
       <p className="text-center text-xs text-base-content/60">
-        Only confirmed payments can be shipped or delivered.
+        Only confirmed payments with reserved stock can be shipped or delivered.
       </p>
+
+      <ConfirmDialog
+        open={Boolean(orderToFulfill)}
+        title="Mark order delivered?"
+        description={`Order #${String(orderToFulfill?._id || "").slice(-8).toUpperCase()} will be marked delivered. This cannot be undone.`}
+        confirmLabel="Mark delivered"
+        busy={statusMutation.isPending}
+        onConfirm={() => {
+          statusMutation.mutate({ orderId: orderToFulfill._id, status: "delivered" });
+          setOrderToFulfill(null);
+        }}
+        onCancel={() => setOrderToFulfill(null)}
+      />
     </div>
   );
 }

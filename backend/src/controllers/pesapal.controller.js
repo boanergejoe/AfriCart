@@ -16,6 +16,8 @@ import {
 import { normalizePesapalTransaction, cartMatchesOrder } from "../utils/pesapal-payment.js";
 import { calculateOrderTotals } from "../utils/order-pricing.js";
 
+const STALE_CHECKOUT_MS = 15 * 60 * 1000;
+
 function readAddress(input) {
   const fields = ["fullName", "streetAddress", "city", "state", "zipCode", "phoneNumber"];
   if (!input || fields.some((field) => typeof input[field] !== "string" || !input[field].trim())) {
@@ -106,25 +108,59 @@ async function updateOrderFromTransaction(orderId, trackingId, transaction) {
         transaction.description || currentOrder.paymentResult.description;
 
       if (paymentStatus === "succeeded" && !currentOrder.stockDeducted) {
-        let inventoryIssue = false;
+        const productIds = currentOrder.orderItems.map((item) => item.product);
+        const products = await Product.find({ _id: { $in: productIds } }).session(session);
+        const stockById = new Map(
+          products.map((product) => [String(product._id), product.stock])
+        );
 
+        // Check every line first so a paid order never gets a partial deduction.
+        const hasInventoryIssue = currentOrder.orderItems.some(
+          (item) => (stockById.get(String(item.product)) ?? 0) < item.quantity
+        );
+
+        if (hasInventoryIssue) {
+          // Keep the cart so the customer can retry or contact support, and
+          // block fulfillment until stock is reconciled.
+          currentOrder.paymentResult.inventoryIssue = true;
+        } else {
+          for (const item of currentOrder.orderItems) {
+            const result = await Product.updateOne(
+              { _id: item.product, stock: { $gte: item.quantity } },
+              { $inc: { stock: -item.quantity } },
+              { session }
+            );
+            // Throwing aborts the whole transaction, so a concurrent stock change
+            // can never leave a partially deducted paid order.
+            if (result.modifiedCount !== 1) {
+              throw new Error("Inventory changed while confirming payment.");
+            }
+          }
+
+          currentOrder.stockDeducted = true;
+          currentOrder.paymentResult.inventoryIssue = false;
+
+          const cart = await Cart.findOne({ user: currentOrder.user }).session(session);
+          if (cart && cartMatchesOrder(cart.items, currentOrder.orderItems)) {
+            cart.items = [];
+            await cart.save({ session });
+          }
+        }
+      }
+
+      if (
+        paymentStatus === "reversed" &&
+        currentOrder.stockDeducted &&
+        !currentOrder.paymentResult.stockRestored
+      ) {
         for (const item of currentOrder.orderItems) {
-          const result = await Product.updateOne(
-            { _id: item.product, stock: { $gte: item.quantity } },
-            { $inc: { stock: -item.quantity } },
+          await Product.updateOne(
+            { _id: item.product },
+            { $inc: { stock: item.quantity } },
             { session }
           );
-          if (result.modifiedCount !== 1) inventoryIssue = true;
         }
-
-        currentOrder.stockDeducted = true;
-        currentOrder.paymentResult.inventoryIssue = inventoryIssue;
-
-        const cart = await Cart.findOne({ user: currentOrder.user }).session(session);
-        if (cart && cartMatchesOrder(cart.items, currentOrder.orderItems)) {
-          cart.items = [];
-          await cart.save({ session });
-        }
+        currentOrder.paymentResult.stockRestored = true;
       }
 
       await currentOrder.save({ session });
@@ -212,57 +248,71 @@ export async function createPesapalCheckout(req, res) {
 
     if (activeOrder) {
       if (!activeOrder.paymentResult.orderTrackingId) {
-        return res.status(409).json({
-          error: "A PesaPal payment is already being prepared. Check My Orders before trying again.",
-        });
-      }
-
-      let updatedActiveOrder;
-      try {
-        const transaction = await getPesapalTransactionStatus(
-          activeOrder.paymentResult.orderTrackingId
-        );
-        updatedActiveOrder = await updateOrderFromTransaction(
-          activeOrder._id,
-          activeOrder.paymentResult.orderTrackingId,
-          transaction
-        );
-      } catch (error) {
-        console.error("Unable to check existing PesaPal payment:", error.message);
-        return res.status(502).json({
-          error: "An earlier PesaPal payment is still unresolved. Check My Orders before trying again.",
-        });
-      }
-
-      if (updatedActiveOrder.paymentResult.status === "succeeded") {
-        return res.status(409).json({
-          error: "This cart already has a confirmed payment. Check My Orders for the completed order.",
-        });
-      }
-
-      if (["initiating", "pending"].includes(updatedActiveOrder.paymentResult.status)) {
-        if (
-          !cartMatchesOrder(cart.items, updatedActiveOrder.orderItems) ||
-          Math.round(updatedActiveOrder.totalPrice * 100) !== totals.totalCents
-        ) {
+        const age = Date.now() - new Date(activeOrder.createdAt).getTime();
+        if (Number.isFinite(age) && age < STALE_CHECKOUT_MS) {
           return res.status(409).json({
-            error: "An earlier payment for a different cart is still unresolved. Check My Orders first.",
+            error:
+              "A PesaPal payment is already being prepared. Check My Orders before trying again.",
           });
         }
 
-        if (!updatedActiveOrder.paymentResult.redirectUrl) {
-          return res.status(409).json({
-            error: "An earlier PesaPal payment is still pending. Check My Orders before trying again.",
+        // A checkout that never received a tracking ID cannot be resumed.
+        activeOrder.paymentResult.status = "failed";
+        await activeOrder.save();
+      }
+
+      if (activeOrder.paymentResult.orderTrackingId) {
+        let updatedActiveOrder;
+        try {
+          const transaction = await getPesapalTransactionStatus(
+            activeOrder.paymentResult.orderTrackingId
+          );
+          updatedActiveOrder = await updateOrderFromTransaction(
+            activeOrder._id,
+            activeOrder.paymentResult.orderTrackingId,
+            transaction
+          );
+        } catch (error) {
+          console.error("Unable to check existing PesaPal payment:", error.message);
+          return res.status(502).json({
+            error:
+              "An earlier PesaPal payment is still unresolved. Check My Orders before trying again.",
           });
         }
 
-        return res.status(200).json({
-          orderId: updatedActiveOrder._id,
-          merchantReference: updatedActiveOrder.paymentResult.id,
-          redirectUrl: updatedActiveOrder.paymentResult.redirectUrl,
-          amountCents: totals.totalCents,
-          currency: updatedActiveOrder.paymentResult.currency,
-        });
+        if (updatedActiveOrder.paymentResult.status === "succeeded") {
+          return res.status(409).json({
+            error:
+              "This cart already has a confirmed payment. Check My Orders for the completed order.",
+          });
+        }
+
+        if (["initiating", "pending"].includes(updatedActiveOrder.paymentResult.status)) {
+          if (
+            !cartMatchesOrder(cart.items, updatedActiveOrder.orderItems) ||
+            Math.round(updatedActiveOrder.totalPrice * 100) !== totals.totalCents
+          ) {
+            return res.status(409).json({
+              error:
+                "An earlier payment for a different cart is still unresolved. Check My Orders first.",
+            });
+          }
+
+          if (!updatedActiveOrder.paymentResult.redirectUrl) {
+            return res.status(409).json({
+              error:
+                "An earlier PesaPal payment is still pending. Check My Orders before trying again.",
+            });
+          }
+
+          return res.status(200).json({
+            orderId: updatedActiveOrder._id,
+            merchantReference: updatedActiveOrder.paymentResult.id,
+            redirectUrl: updatedActiveOrder.paymentResult.redirectUrl,
+            amountCents: totals.totalCents,
+            currency: updatedActiveOrder.paymentResult.currency,
+          });
+        }
       }
     }
 

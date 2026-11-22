@@ -1,4 +1,4 @@
-import { ShoppingBagIcon, UserCircleIcon } from "lucide-react";
+import { UserCircleIcon } from "lucide-react";
 import { Link, useLocation } from "react-router";
 
 import { useAdminAuth } from "../lib/adminAuth.js";
@@ -15,12 +15,10 @@ function Sidebar() {
 
       <div className="flex min-h-full w-72 flex-col border-r border-base-300 bg-base-100">
         <div className="flex items-center gap-3 border-b border-base-200 px-5 py-5">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-content">
-            <ShoppingBagIcon className="size-5" aria-hidden="true" />
-          </div>
+          <img src="/africart.svg" alt="" className="size-10 shrink-0 rounded-xl" />
           <div>
-            <p className="text-lg font-bold leading-tight">AfriCart</p>
-            <p className="text-xs text-base-content/60">Admin console</p>
+            <p className="text-lg font-bold leading-tight">AfriCart Admin</p>
+            <p className="text-xs text-base-content/60">Store operations</p>
           </div>
         </div>
 

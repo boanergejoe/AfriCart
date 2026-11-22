@@ -92,6 +92,12 @@ function AddressesScreen() {
       return;
     }
 
+    const phoneNumber = addressForm.phoneNumber.replace(/[^\d+]/g, "");
+    if (!/^\+?\d{7,15}$/.test(phoneNumber)) {
+      showMessage("Invalid phone number", "Use 7–15 digits, optionally starting with +.");
+      return;
+    }
+
     if (editingAddressId) {
       updateAddress(
         { addressId: editingAddressId, addressData: addressForm },

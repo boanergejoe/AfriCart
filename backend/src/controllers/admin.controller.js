@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 
+import { Cart } from "../models/cart.model.js";
 import { Order } from "../models/order.model.js";
 import { Product } from "../models/product.model.js";
 import { Review } from "../models/review.model.js";
@@ -85,14 +86,15 @@ export async function createProduct(req, res) {
   }
 }
 
-// Public storefront feed. Keeps the bare-array response used by the mobile app.
+// Public storefront feed. Keeps the bare-array response used by the mobile app
+// and returns the full catalog so customers can browse every product.
 export async function getAllProducts(req, res) {
   try {
     const filter = {
       ...(req.query.category && { category: req.query.category }),
       ...(req.query.search && { name: searchTerm(req.query.search) }),
     };
-    const products = await Product.find(filter).sort({ createdAt: -1 }).limit(100).lean();
+    const products = await Product.find(filter).sort({ createdAt: -1 }).lean();
     return res.status(200).json(products);
   } catch (error) {
     console.error("Error fetching products:", error);
@@ -218,6 +220,13 @@ export async function updateOrderStatus(req, res) {
     if (status !== "pending" && order.paymentResult?.status !== "succeeded") {
       return sendError(res, 409, "Only confirmed paid orders can be shipped or delivered.");
     }
+    if (status !== "pending" && (order.paymentResult?.inventoryIssue || !order.stockDeducted)) {
+      return sendError(
+        res,
+        409,
+        "This payment is confirmed but inventory could not be reserved. Review stock before shipping."
+      );
+    }
     if (order.status === "delivered" && status !== "delivered") {
       return sendError(res, 409, "A delivered order cannot be moved back.");
     }
@@ -295,7 +304,14 @@ export async function deleteProduct(req, res) {
     const product = await Product.findById(id);
     if (!product) return sendError(res, 404, "Product not found.");
 
-    await Promise.all([Product.findByIdAndDelete(id), Review.deleteMany({ productId: id })]);
+    // Keep carts and wishlists usable after a catalog deletion. Order items are
+    // snapshots, so historical orders remain intact.
+    await Promise.all([
+      Product.findByIdAndDelete(id),
+      Review.deleteMany({ productId: id }),
+      Cart.updateMany({ "items.product": id }, { $pull: { items: { product: id } } }),
+      User.updateMany({ wishlist: id }, { $pull: { wishlist: id } }),
+    ]);
     await destroyProductImages(product.images);
 
     return res.status(200).json({ message: "Product deleted successfully." });
