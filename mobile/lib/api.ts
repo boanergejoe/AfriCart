@@ -1,39 +1,40 @@
-import { useAuth } from "@clerk/clerk-expo";
 import axios from "axios";
-import { useEffect } from "react";
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000/api";
 
 const api = axios.create({
-  baseURL: API_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
+  baseURL: API_URL.replace(/\/$/, ""),
+  headers: { "Content-Type": "application/json" },
+  timeout: 20_000,
 });
 
-export const useApi = () => {
-  const { getToken } = useAuth();
+let tokenProvider: (() => Promise<string | null>) | null = null;
+let unauthorizedHandler: (() => void) | null = null;
 
-  useEffect(() => {
-    const interceptor = api.interceptors.request.use(async (config) => {
-      const token = await getToken();
-
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-
-      return config;
-    });
-
-    // cleanup: remove interceptor when component unmounts
-
-    return () => {
-      api.interceptors.request.eject(interceptor);
-    };
-  }, [getToken]);
-
-  return api;
+// Installed once by AuthBridge so every screen shares a single interceptor and token getter.
+export const configureApiAuth = (provider: () => Promise<string | null>) => {
+  tokenProvider = provider;
 };
 
-// on every single req, we would like have an auth token so that our backend knows that we're authenticated
-// we're including the auth token under the auth headers
+export const setUnauthorizedHandler = (handler: (() => void) | null) => {
+  unauthorizedHandler = handler;
+};
+
+api.interceptors.request.use(async (config) => {
+  const token = (await tokenProvider?.()) ?? null;
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  else delete config.headers.Authorization;
+  return config;
+});
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) unauthorizedHandler?.();
+    return Promise.reject(error);
+  }
+);
+
+export const useApi = () => api;
+
+export default api;

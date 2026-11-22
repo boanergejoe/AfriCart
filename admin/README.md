@@ -1,16 +1,40 @@
-# React + Vite
+# AfriCart Admin Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+The React/Vite admin console for AfriCart. It uses Clerk for authentication, TanStack Query for
+server state, Tailwind CSS + daisyUI for styling, and the shared Express API in `../backend`.
 
-Currently, two official plugins are available:
+## Setup
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+1. Copy `.env.example` to `.env` and set:
 
-## React Compiler
+   - `VITE_CLERK_PUBLISHABLE_KEY` — Clerk publishable key.
+   - `VITE_API_URL` — backend API origin ending in `/api`.
+   - `VITE_SENTRY_DSN` — optional error monitoring DSN.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+2. Install and run:
 
-## Expanding the ESLint configuration
+   ```bash
+   npm ci
+   npm run dev
+   ```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+3. The dashboard opens at `http://localhost:5173`. Sign in with the Clerk account whose email
+   matches the backend `ADMIN_EMAIL`; all other signed-in users see an access-denied screen.
+
+## Scripts
+
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start the Vite development server. |
+| `npm run build` | Build the production bundle into `dist/`. |
+| `npm run preview` | Preview the production bundle locally. |
+| `npm run lint` | Run ESLint over the source. |
+
+## Notes
+
+- `VITE_*` variables are embedded at build time and are public. Never put secrets in them.
+- Deep links are rewritten to `index.html` by `vercel.json` when deployed to Vercel.
+- The dashboard caches admin data with TanStack Query and clears it whenever the signed-in user
+  changes.
+- Layouts use the explicit `sm`/`md`/`lg`/`xl` breakpoints; render errors are caught by the root
+  error boundary and reported to Sentry when a DSN is configured.

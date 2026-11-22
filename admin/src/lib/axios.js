@@ -1,8 +1,12 @@
 import axios from "axios";
 
+const baseURL = import.meta.env.VITE_API_URL;
+if (!baseURL) throw new Error("Missing VITE_API_URL");
+
 const axiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
-  withCredentials: true, // by adding this field browser will send the cookies to server automatically, on every single req
+  baseURL: baseURL.replace(/\/$/, ""),
+  withCredentials: true,
+  timeout: 20_000,
 });
 
 export default axiosInstance;

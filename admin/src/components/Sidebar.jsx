@@ -1,67 +1,71 @@
 import { useUser } from "@clerk/react";
 import { ShoppingBagIcon } from "lucide-react";
 import { Link, useLocation } from "react-router";
-import { NAVIGATION } from "./Navbar";
+import { NAVIGATION } from "../lib/navigation.js";
+import ImageWithFallback from "./ImageWithFallback.jsx";
 
 function Sidebar() {
-  const location = useLocation();
+  const { pathname } = useLocation();
   const { user } = useUser();
 
   return (
-    <div className="drawer-side is-drawer-close:overflow-visible">
-      <label htmlFor="my-drawer" aria-label="close sidebar" className="drawer-overlay"></label>
+    <aside className="drawer-side z-40">
+      <label htmlFor="admin-drawer" aria-label="Close navigation menu" className="drawer-overlay" />
 
-      <div className="flex min-h-full flex-col items-start bg-base-200 is-drawer-close:w-14 is-drawer-open:w-64">
-        <div className="p-4 w-full">
-          <div className="flex items-center gap-3">
-            <div className="size-10 bg-primary rounded-xl flex items-center justify-center shrink-0">
-              <ShoppingBagIcon className="w-6 h-6 text-primary-content" />
-            </div>
-            <div className="is-drawer-close:hidden">
-              <span className="text-xl font-bold">AfriCart</span>
-              <span className="block text-xs opacity-60">Admin</span>
-            </div>
+      <div className="flex min-h-full w-72 flex-col border-r border-base-300 bg-base-100">
+        <div className="flex items-center gap-3 border-b border-base-200 px-5 py-5">
+          <div className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-content">
+            <ShoppingBagIcon className="size-5" aria-hidden="true" />
+          </div>
+          <div>
+            <p className="text-lg font-bold leading-tight">AfriCart</p>
+            <p className="text-xs text-base-content/60">Admin console</p>
           </div>
         </div>
 
-        <ul className="menu w-full grow flex flex-col gap-2">
-          {NAVIGATION.map((item) => {
-            const isActive = location.pathname === item.path;
-            return (
-              <li key={item.path}>
-                <Link
-                  to={item.path}
-                  className={`is-drawer-close:tooltip is-drawer-close:tooltip-right 
-                    ${isActive ? "bg-primary text-primary-content" : ""}
-                  `}
-                >
-                  {item.icon}
-                  <span className="is-drawer-close:hidden">{item.name}</span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+        <nav aria-label="Main navigation" className="flex-1 px-3 py-5">
+          <p className="mb-2 px-3 text-xs font-semibold uppercase tracking-widest text-base-content/50">
+            Management
+          </p>
+          <ul className="menu w-full gap-1 p-0">
+            {NAVIGATION.map((item) => {
+              const { name, path } = item;
+              const Icon = item.icon;
+              const isActive = pathname === path || pathname.startsWith(`${path}/`);
 
-        <div className="p-4 w-full">
-          <div className="flex items-center gap-3">
-            <div className="avatar shrink-0">
-              <img src={user?.imageUrl} alt={user?.name} className="w-10 h-10 rounded-full" />
-            </div>
+              return (
+                <li key={path}>
+                  <Link
+                    to={path}
+                    aria-current={isActive ? "page" : undefined}
+                    className={`gap-3 rounded-xl ${isActive ? "bg-primary text-primary-content" : ""}`}
+                  >
+                    <Icon className="size-5" aria-hidden="true" />
+                    <span>{name}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
 
-            <div className="flex-1 min-w-0 is-drawer-close:hidden">
-              <p className="text-sm font-semibold truncate">
-                {user?.firstName} {user?.lastName}
-              </p>
-
-              <p className="text-xs opacity-60 truncate">
-                {user?.emailAddresses?.[0]?.emailAddress}
-              </p>
-            </div>
+        <div className="flex items-center gap-3 border-t border-base-200 px-5 py-4">
+          <ImageWithFallback
+            src={user?.imageUrl}
+            alt={user?.fullName || user?.primaryEmailAddress?.emailAddress || "Admin"}
+            rounded
+            className="size-10 shrink-0 object-cover"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold">{user?.fullName || "Administrator"}</p>
+            <p className="truncate text-xs text-base-content/60">
+              {user?.primaryEmailAddress?.emailAddress}
+            </p>
           </div>
         </div>
       </div>
-    </div>
+    </aside>
   );
 }
+
 export default Sidebar;

@@ -1,20 +1,28 @@
+import { Alert, Platform, ScrollView, Text, TouchableOpacity, View } from "react-native";
+
 import AddressCard from "@/components/AddressCard";
 import AddressesHeader from "@/components/AddressesHeader";
 import AddressFormModal from "@/components/AddressFormModal";
+import { EmptyState } from "@/components/EmptyState";
+import { ErrorState } from "@/components/ErrorState";
+import LoadingState from "@/components/LoadingState";
 import SafeScreen from "@/components/SafeScreen";
 import { useAddresses } from "@/hooks/useAddressess";
+import palette from "@/lib/theme";
+import { getErrorMessage } from "@/lib/utils";
 import { Address } from "@/types";
-import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
-import {
-  ActivityIndicator,
-  Alert,
-  Platform,
-  ScrollView,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+
+const EMPTY_FORM = {
+  label: "",
+  fullName: "",
+  streetAddress: "",
+  city: "",
+  state: "",
+  zipCode: "",
+  phoneNumber: "",
+  isDefault: false,
+};
 
 function AddressesScreen() {
   const {
@@ -22,43 +30,25 @@ function AddressesScreen() {
     addresses,
     deleteAddress,
     isAddingAddress,
-    isDeletingAddress,
     isError,
     isLoading,
     isUpdatingAddress,
+    isAddressPending,
+    refetch,
     updateAddress,
   } = useAddresses();
+
   const [showAddressForm, setShowAddressForm] = useState(false);
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
-  const [addressForm, setAddressForm] = useState({
-    label: "",
-    fullName: "",
-    streetAddress: "",
-    city: "",
-    state: "",
-    zipCode: "",
-    phoneNumber: "",
-    isDefault: false,
-  });
+  const [addressForm, setAddressForm] = useState(EMPTY_FORM);
 
   const handleAddAddress = () => {
-    setShowAddressForm(true);
+    setAddressForm(EMPTY_FORM);
     setEditingAddressId(null);
-    setAddressForm({
-      label: "",
-      fullName: "",
-      streetAddress: "",
-      city: "",
-      state: "",
-      zipCode: "",
-      phoneNumber: "",
-      isDefault: false,
-    });
+    setShowAddressForm(true);
   };
 
   const handleEditAddress = (address: Address) => {
-    setShowAddressForm(true);
-    setEditingAddressId(address._id);
     setAddressForm({
       label: address.label,
       fullName: address.fullName,
@@ -69,66 +59,66 @@ function AddressesScreen() {
       phoneNumber: address.phoneNumber,
       isDefault: address.isDefault,
     });
+    setEditingAddressId(address._id);
+    setShowAddressForm(true);
   };
 
   const handleDeleteAddress = (addressId: string, label: string) => {
+    const remove = () =>
+      deleteAddress(addressId, {
+        onError: (error: unknown) => Alert.alert("Could not delete address", getErrorMessage(error)),
+      });
+
     if (Platform.OS === "web" && typeof window !== "undefined") {
-      if (window.confirm(`Delete ${label}?`)) {
-        deleteAddress(addressId);
-      }
+      if (window.confirm(`Delete ${label}?`)) remove();
       return;
     }
 
-    Alert.alert("Delete Address", `Are you sure you want to delete ${label}`, [
+    Alert.alert("Delete address", `Delete ${label}?`, [
       { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: () => deleteAddress(addressId) },
+      { text: "Delete", style: "destructive", onPress: remove },
     ]);
   };
 
   const handleSaveAddress = () => {
-    if (
-      !addressForm.label ||
-      !addressForm.fullName ||
-      !addressForm.streetAddress ||
-      !addressForm.city ||
-      !addressForm.state ||
-      !addressForm.zipCode ||
-      !addressForm.phoneNumber
-    ) {
-      Alert.alert("Error", "Please fill in all fields");
+    const requiredFields = [
+      addressForm.label,
+      addressForm.fullName,
+      addressForm.streetAddress,
+      addressForm.city,
+      addressForm.state,
+      addressForm.zipCode,
+      addressForm.phoneNumber,
+    ];
+
+    if (requiredFields.some((field) => !field.trim())) {
+      Alert.alert("Missing information", "Please fill in all fields.");
       return;
     }
 
     if (editingAddressId) {
-      // update an existing address
       updateAddress(
-        {
-          addressId: editingAddressId,
-          addressData: addressForm,
-        },
+        { addressId: editingAddressId, addressData: addressForm },
         {
           onSuccess: () => {
             setShowAddressForm(false);
             setEditingAddressId(null);
-            Alert.alert("Success", "Address updated successfully");
+            Alert.alert("Saved", "Address updated successfully.");
           },
-          onError: (error: any) => {
-            Alert.alert("Error", error?.response?.data?.error || "Failed to update address");
-          },
+          onError: (error: unknown) =>
+            Alert.alert("Could not update address", getErrorMessage(error)),
         }
       );
-    } else {
-      // create new address
-      addAddress(addressForm, {
-        onSuccess: () => {
-          setShowAddressForm(false);
-          Alert.alert("Success", "Address added successfully");
-        },
-        onError: (error: any) => {
-          Alert.alert("Error", error?.response?.data?.error || "Failed to add address");
-        },
-      });
+      return;
     }
+
+    addAddress(addressForm, {
+      onSuccess: () => {
+        setShowAddressForm(false);
+        Alert.alert("Saved", "Address added successfully.");
+      },
+      onError: (error: unknown) => Alert.alert("Could not add address", getErrorMessage(error)),
+    });
   };
 
   const handleCloseAddressForm = () => {
@@ -136,43 +126,55 @@ function AddressesScreen() {
     setEditingAddressId(null);
   };
 
-  if (isLoading) return <LoadingUI />;
-  if (isError) return <ErrorUI />;
+  if (isLoading) {
+    return (
+      <SafeScreen>
+        <AddressesHeader />
+        <LoadingState message="Loading addresses…" />
+      </SafeScreen>
+    );
+  }
+
+  if (isError) {
+    return (
+      <SafeScreen>
+        <AddressesHeader />
+        <ErrorState
+          title="Failed to load addresses"
+          onRetry={() => {
+            void refetch();
+          }}
+        />
+      </SafeScreen>
+    );
+  }
 
   return (
     <SafeScreen>
       <AddressesHeader />
 
       {addresses.length === 0 ? (
-        <View className="flex-1 items-center justify-center px-6">
-          <Ionicons name="location-outline" size={80} color="#666" />
-          <Text className="text-text-primary font-semibold text-xl mt-4">No addresses yet</Text>
-          <Text className="text-text-secondary text-center mt-2">
-            Add your first delivery address
-          </Text>
-          <TouchableOpacity
-            className="bg-primary rounded-2xl px-8 py-4 mt-6"
-            activeOpacity={0.8}
-            onPress={handleAddAddress}
-          >
-            <Text className="text-background font-bold text-base">Add Address</Text>
-          </TouchableOpacity>
-        </View>
+        <EmptyState
+          icon="location-outline"
+          title="No addresses yet"
+          description="Add a delivery address to speed up checkout."
+          actionLabel="Add Address"
+          onAction={handleAddAddress}
+        />
       ) : (
         <ScrollView
           className="flex-1"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 100, alignItems: "center" }}
         >
-          <View className="px-6 py-4" style={{ width: "100%", maxWidth: 840 }}>
+          <View className="px-6 py-4" style={{ width: "100%", maxWidth: palette.layout.compactContent }}>
             {addresses.map((address) => (
               <AddressCard
                 key={address._id}
                 address={address}
                 onEdit={handleEditAddress}
                 onDelete={handleDeleteAddress}
-                isUpdatingAddress={isUpdatingAddress}
-                isDeletingAddress={isDeletingAddress}
+                isPending={isAddressPending(address._id)}
               />
             ))}
 
@@ -180,10 +182,11 @@ function AddressesScreen() {
               className="bg-primary rounded-2xl py-4 items-center mt-2"
               activeOpacity={0.8}
               onPress={handleAddAddress}
+              accessibilityRole="button"
+              accessibilityLabel="Add a new address"
             >
               <View className="flex-row items-center">
-                <Ionicons name="add-circle-outline" size={24} color="#121212" />
-                <Text className="text-background font-bold text-base ml-2">Add New Address</Text>
+                <Text className="text-background font-bold text-base">+ Add New Address</Text>
               </View>
             </TouchableOpacity>
           </View>
@@ -203,33 +206,5 @@ function AddressesScreen() {
     </SafeScreen>
   );
 }
+
 export default AddressesScreen;
-
-function ErrorUI() {
-  return (
-    <SafeScreen>
-      <AddressesHeader />
-      <View className="flex-1 items-center justify-center px-6">
-        <Ionicons name="alert-circle-outline" size={64} color="#FF6B6B" />
-        <Text className="text-text-primary font-semibold text-xl mt-4">
-          Failed to load addresses
-        </Text>
-        <Text className="text-text-secondary text-center mt-2">
-          Please check your connection and try again
-        </Text>
-      </View>
-    </SafeScreen>
-  );
-}
-
-function LoadingUI() {
-  return (
-    <SafeScreen>
-      <AddressesHeader />
-      <View className="flex-1 items-center justify-center px-6">
-        <ActivityIndicator size="large" color="#00D9FF" />
-        <Text className="text-text-secondary mt-4">Loading addresses...</Text>
-      </View>
-    </SafeScreen>
-  );
-}

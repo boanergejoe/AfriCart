@@ -1,92 +1,130 @@
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { customerApi } from "../lib/api";
-import { formatDate } from "../lib/utils";
+import { SearchIcon, UsersIcon } from "lucide-react";
+
+import { EmptyState, ErrorState, LoadingState } from "../components/StateViews.jsx";
+import ImageWithFallback from "../components/ImageWithFallback.jsx";
+import { customerApi } from "../lib/api.js";
+import { formatDate, getErrorMessage } from "../lib/utils.js";
+
+const PAGE_SIZE = 12;
 
 function CustomersPage() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["customers"],
-    queryFn: customerApi.getAll,
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+
+  const params = useMemo(
+    () => ({ search: search.trim() || undefined, page, limit: PAGE_SIZE }),
+    [search, page]
+  );
+
+  const customersQuery = useQuery({
+    queryKey: ["customers", params],
+    queryFn: () => customerApi.getAll(params),
   });
 
-  const customers = data?.customers || [];
+  const { customers = [], total = 0, pages = 1 } = customersQuery.data || {};
 
   return (
     <div className="space-y-6">
-      {/* HEADER */}
-      <div>
-        <h1 className="text-2xl font-bold">Customers</h1>
-        <p className="text-base-content/70 mt-1">
-          {customers.length} {customers.length === 1 ? "customer" : "customers"} registered
-        </p>
-      </div>
+      <header>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Customers</h1>
+        <p className="muted mt-1 text-sm">{total} registered customer(s).</p>
+      </header>
 
-      {/* CUSTOMERS TABLE */}
-      <div className="card bg-base-100 shadow-xl">
-        <div className="card-body">
-          {isLoading ? (
-            <div className="flex justify-center py-12">
-              <span className="loading loading-spinner loading-lg" />
-            </div>
-          ) : customers.length === 0 ? (
-            <div className="text-center py-12 text-base-content/60">
-              <p className="text-xl font-semibold mb-2">No customers yet</p>
-              <p className="text-sm">Customers will appear here once they sign up</p>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Customer</th>
-                    <th>Email</th>
-                    <th>Addresses</th>
-                    <th>Wishlist</th>
-                    <th>Joined Date</th>
+      <section className="surface flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+        <label className="input input-bordered flex flex-1 items-center gap-2">
+          <SearchIcon className="size-4 text-base-content/50" aria-hidden="true" />
+          <span className="sr-only">Search customers</span>
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+            placeholder="Search by name or email…"
+          />
+        </label>
+      </section>
+
+      <section className="surface overflow-hidden">
+        {customersQuery.isLoading ? (
+          <LoadingState label="Loading customers…" />
+        ) : customersQuery.isError ? (
+          <ErrorState
+            message={getErrorMessage(customersQuery.error, "Unable to load customers.")}
+            onRetry={customersQuery.refetch}
+          />
+        ) : customers.length === 0 ? (
+          <EmptyState
+            icon={UsersIcon}
+            title="No customers found"
+            description={search ? "Try a different search term." : "Customers appear here once they sign up."}
+          />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="table table-zebra">
+              <thead>
+                <tr>
+                  <th>Customer</th>
+                  <th>Email</th>
+                  <th className="text-center">Addresses</th>
+                  <th className="text-center">Wishlist</th>
+                  <th>Joined</th>
+                </tr>
+              </thead>
+              <tbody>
+                {customers.map((customer) => (
+                  <tr key={customer._id}>
+                    <td>
+                      <div className="flex items-center gap-3">
+                        <ImageWithFallback
+                          src={customer.imageUrl}
+                          alt={customer.name || "Customer"}
+                          rounded
+                          className="size-10 shrink-0 object-cover"
+                        />
+                        <span className="font-medium">{customer.name || "—"}</span>
+                      </div>
+                    </td>
+                    <td className="text-sm text-base-content/80">{customer.email}</td>
+                    <td className="text-center tabular-nums">{customer.addresses?.length || 0}</td>
+                    <td className="text-center tabular-nums">{customer.wishlist?.length || 0}</td>
+                    <td className="text-sm text-base-content/70">{formatDate(customer.createdAt)}</td>
                   </tr>
-                </thead>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
-                <tbody>
-                  {customers.map((customer) => (
-                    <tr key={customer._id}>
-                      <td className="flex items-center gap-3">
-                        <div className="avatar placeholder">
-                          <div className="bg-primary text-primary-content rounded-full w-12">
-                            <img
-                              src={customer.imageUrl}
-                              alt={customer.name}
-                              className="w-12 h-12 rounded-full"
-                            />
-                          </div>
-                        </div>
-                        <div className="font-semibold">{customer.name}</div>
-                      </td>
-
-                      <td>{customer.email}</td>
-
-                      <td>
-                        <div className="badge badge-ghost">
-                          {customer.addresses?.length || 0} address(es)
-                        </div>
-                      </td>
-
-                      <td>
-                        <div className="badge badge-ghost">
-                          {customer.wishlist?.length || 0} item(s)
-                        </div>
-                      </td>
-
-                      <td>
-                        <span className="text-sm opacity-60">{formatDate(customer.createdAt)}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+      {pages > 1 && (
+        <div className="flex items-center justify-center gap-3">
+          <button
+            type="button"
+            className="btn btn-sm"
+            disabled={page <= 1}
+            onClick={() => setPage((current) => current - 1)}
+          >
+            Previous
+          </button>
+          <span className="text-sm muted">
+            Page {page} of {pages}
+          </span>
+          <button
+            type="button"
+            className="btn btn-sm"
+            disabled={page >= pages}
+            onClick={() => setPage((current) => current + 1)}
+          >
+            Next
+          </button>
         </div>
-      </div>
+      )}
     </div>
   );
 }
+
 export default CustomersPage;

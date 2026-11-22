@@ -1,10 +1,16 @@
-import { LoaderIcon } from "lucide-react";
+import { LoaderCircleIcon } from "lucide-react";
 
 function PageLoader() {
   return (
-    <div className="flex items-center justify-center h-screen">
-      <LoaderIcon className="size-12 animate-spin" />
+    <div
+      role="status"
+      aria-live="polite"
+      className="flex min-h-screen flex-col items-center justify-center gap-3 bg-base-200/60"
+    >
+      <LoaderCircleIcon className="size-10 animate-spin text-primary" aria-hidden="true" />
+      <span className="sr-only">Loading AfriCart admin</span>
     </div>
   );
 }
+
 export default PageLoader;

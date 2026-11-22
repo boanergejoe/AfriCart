@@ -1,5 +1,7 @@
+import palette from "@/lib/theme";
 import ProductsGrid from "@/components/ProductsGrid";
 import SafeScreen from "@/components/SafeScreen";
+import { useBreakpoints } from "@/hooks/useBreakpoints";
 import useProducts from "@/hooks/useProducts";
 
 import { Ionicons } from "@expo/vector-icons";
@@ -39,6 +41,7 @@ const ShopScreen = () => {
   const [sortOption, setSortOption] = useState<SortOption>("featured");
   const [showSortOptions, setShowSortOptions] = useState(false);
 
+  const { contentWidth } = useBreakpoints();
   const { data: products, isLoading, isFetching, isError, refetch } = useProducts();
 
   const filteredProducts = useMemo(() => {
@@ -79,7 +82,7 @@ const ShopScreen = () => {
         {/* HEADER */}
         <View
           className="px-6 pb-4 pt-6"
-          style={{ width: "100%", maxWidth: 1280, alignSelf: "center" }}
+          style={{ width: "100%", maxWidth: contentWidth, alignSelf: "center" }}
         >
           <View className="flex-row items-center justify-between mb-6">
             <View>
@@ -94,16 +97,16 @@ const ShopScreen = () => {
               accessibilityRole="button"
               accessibilityLabel="Sort products"
             >
-              <Ionicons name="options-outline" size={22} color={"#fff"} />
+              <Ionicons name="options-outline" size={22} color={palette.text.primary} />
             </TouchableOpacity>
           </View>
 
           {/* SEARCH BAR */}
           <View className="bg-surface flex-row items-center px-5 py-4 rounded-2xl">
-            <Ionicons color={"#666"} size={22} name="search" />
+            <Ionicons color={palette.text.tertiary} size={22} name="search" />
             <TextInput
               placeholder="Search for products"
-              placeholderTextColor={"#666"}
+              placeholderTextColor={palette.text.tertiary}
               className="flex-1 ml-3 text-base text-text-primary"
               value={searchQuery}
               onChangeText={setSearchQuery}
@@ -113,7 +116,7 @@ const ShopScreen = () => {
         </View>
 
         {/* CATEGORY FILTER */}
-        <View className="mb-6" style={{ width: "100%", maxWidth: 1280, alignSelf: "center" }}>
+        <View className="mb-6" style={{ width: "100%", maxWidth: contentWidth, alignSelf: "center" }}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -131,7 +134,7 @@ const ShopScreen = () => {
                     height: 80,
                     marginRight: 12,
                     borderRadius: 16,
-                    backgroundColor: isSelected ? "#00D9FF" : "#1C1C1E",
+                    backgroundColor: isSelected ? palette.primary.DEFAULT : palette.surface.DEFAULT,
                   }}
                   accessibilityRole="button"
                   accessibilityLabel={`Filter by ${category.name}`}
@@ -141,7 +144,7 @@ const ShopScreen = () => {
                     <Ionicons
                       name={category.icon}
                       size={36}
-                      color={isSelected ? "#121212" : "#fff"}
+                      color={isSelected ? palette.onPrimary : palette.text.primary}
                     />
                   ) : (
                     <Image
@@ -159,7 +162,7 @@ const ShopScreen = () => {
 
         <View
           className="px-6 mb-6"
-          style={{ width: "100%", maxWidth: 1280, alignSelf: "center" }}
+          style={{ width: "100%", maxWidth: contentWidth, alignSelf: "center" }}
         >
           <View className="flex-row items-center justify-between mb-4">
             <Text className="text-text-primary text-lg font-bold">Products</Text>
@@ -194,7 +197,7 @@ const ShopScreen = () => {
             justifyContent: "center",
             alignItems: "center",
             padding: 24,
-            backgroundColor: "rgba(0,0,0,0.65)",
+            backgroundColor: palette.overlay,
           }}
         >
           <Pressable
@@ -205,10 +208,10 @@ const ShopScreen = () => {
           <View
             style={{
               width: "100%",
-              maxWidth: 420,
+              maxWidth: palette.layout.modal,
               padding: 24,
               borderRadius: 24,
-              backgroundColor: "#1C1C1E",
+              backgroundColor: palette.background.light,
             }}
           >
             <View className="flex-row items-center justify-between mb-4">
@@ -218,7 +221,7 @@ const ShopScreen = () => {
                 accessibilityRole="button"
                 accessibilityLabel="Close sort options"
               >
-                <Ionicons name="close" size={24} color="#FFFFFF" />
+                <Ionicons name="close" size={24} color={palette.text.primary} />
               </TouchableOpacity>
             </View>
             {SORT_OPTIONS.map((option) => {
@@ -227,7 +230,7 @@ const ShopScreen = () => {
                 <TouchableOpacity
                   key={option.id}
                   className="flex-row items-center justify-between rounded-xl px-4 py-4 mb-2"
-                  style={{ backgroundColor: isSelected ? "#263238" : "#282828" }}
+                  style={{ backgroundColor: isSelected ? palette.surface.light : palette.surface.DEFAULT }}
                   onPress={() => {
                     setSortOption(option.id);
                     setShowSortOptions(false);
@@ -239,7 +242,7 @@ const ShopScreen = () => {
                   <Ionicons
                     name={isSelected ? "radio-button-on" : "radio-button-off"}
                     size={20}
-                    color={isSelected ? "#00D9FF" : "#888888"}
+                    color={isSelected ? palette.primary.DEFAULT : palette.text.tertiary}
                   />
                 </TouchableOpacity>
               );

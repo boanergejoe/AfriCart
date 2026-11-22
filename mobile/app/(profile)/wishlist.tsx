@@ -1,9 +1,3 @@
-import SafeScreen from "@/components/SafeScreen";
-import useCart from "@/hooks/useCart";
-import useWishlist from "@/hooks/useWishlist";
-import { Ionicons } from "@expo/vector-icons";
-import { Image } from "expo-image";
-import { router } from "expo-router";
 import {
   ActivityIndicator,
   Alert,
@@ -13,29 +7,52 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
+import { router } from "expo-router";
 
-function WishlistScreen() {
-  const { wishlist, isLoading, isError, removeFromWishlist, isRemovingFromWishlist } =
-    useWishlist();
+import { EmptyState } from "@/components/EmptyState";
+import { ErrorState } from "@/components/ErrorState";
+import LoadingState from "@/components/LoadingState";
+import SafeScreen from "@/components/SafeScreen";
+import useCart from "@/hooks/useCart";
+import useWishlist from "@/hooks/useWishlist";
+import palette from "@/lib/theme";
+import { getErrorMessage } from "@/lib/utils";
 
-  const { addToCart, isAddingToCart } = useCart();
+const showMessage = (title: string, message: string) => {
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    window.alert(`${title}\n\n${message}`);
+    return;
+  }
+  Alert.alert(title, message);
+};
+
+const WishlistScreen = () => {
+  const {
+    wishlist,
+    isLoading,
+    isError,
+    removeFromWishlist,
+    isProductPending: isWishlistItemPending,
+  } = useWishlist();
+  const { addToCart, isProductPending: isCartItemPending } = useCart();
 
   const handleRemoveFromWishlist = (productId: string, productName: string) => {
+    const remove = () =>
+      removeFromWishlist(productId, {
+        onError: (error: unknown) =>
+          showMessage("Could not remove item", getErrorMessage(error)),
+      });
+
     if (Platform.OS === "web" && typeof window !== "undefined") {
-      if (window.confirm(`Remove ${productName} from your wishlist?`)) {
-        removeFromWishlist(productId);
-      }
+      if (window.confirm(`Remove ${productName} from your wishlist?`)) remove();
       return;
     }
 
-    Alert.alert("Remove from wishlist", `Remove ${productName} from wishlist`, [
+    Alert.alert("Remove from wishlist", `Remove ${productName} from your wishlist?`, [
       { text: "Cancel", style: "cancel" },
-      {
-        text: "Remove",
-        style: "destructive",
-
-        onPress: () => removeFromWishlist(productId),
-      },
+      { text: "Remove", style: "destructive", onPress: remove },
     ]);
   };
 
@@ -43,23 +60,51 @@ function WishlistScreen() {
     addToCart(
       { productId, quantity: 1 },
       {
-        onSuccess: () => Alert.alert("Success", `${productName} added to cart!`),
-        onError: (error: any) => {
-          Alert.alert("Error", error?.response?.data?.error || "Failed to add to cart");
-        },
+        onSuccess: () => showMessage("Added to cart", `${productName} is in your cart.`),
+        onError: (error: unknown) => showMessage("Could not add to cart", getErrorMessage(error)),
       }
     );
   };
 
-  if (isLoading) return <LoadingUI />;
-  if (isError) return <ErrorUI />;
+  if (isLoading) {
+    return (
+      <SafeScreen>
+        <LoadingState message="Loading wishlist…" />
+      </SafeScreen>
+    );
+  }
+
+  if (isError) {
+    return (
+      <SafeScreen>
+        <ErrorState title="Failed to load wishlist" />
+      </SafeScreen>
+    );
+  }
+
+  if (wishlist.length === 0) {
+    return (
+      <SafeScreen>
+        <EmptyState
+          header="Wishlist"
+          icon="heart-outline"
+          title="Your wishlist is empty"
+          description="Add products you love to see them here."
+        />
+      </SafeScreen>
+    );
+  }
 
   return (
     <SafeScreen>
-      {/* HEADER */}
       <View className="px-6 pb-5 border-b border-surface flex-row items-center">
-        <TouchableOpacity onPress={() => router.back()} className="mr-4">
-          <Ionicons name="arrow-back" size={28} color="#FFFFFF" />
+        <TouchableOpacity
+          onPress={() => router.back()}
+          className="mr-4"
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <Ionicons name="arrow-back" size={28} color={palette.text.primary} />
         </TouchableOpacity>
         <Text className="text-text-primary text-2xl font-bold">Wishlist</Text>
         <Text className="text-text-secondary text-sm ml-auto">
@@ -67,35 +112,19 @@ function WishlistScreen() {
         </Text>
       </View>
 
-      {wishlist.length === 0 ? (
-        <View className="flex-1 items-center justify-center px-6">
-          <Ionicons name="heart-outline" size={80} color="#666" />
-          <Text className="text-text-primary font-semibold text-xl mt-4">
-            Your wishlist is empty
-          </Text>
-          <Text className="text-text-secondary text-center mt-2">
-            Start adding products you love!
-          </Text>
-          <TouchableOpacity
-            className="bg-primary rounded-2xl px-8 py-4 mt-6"
-            activeOpacity={0.8}
-            onPress={() => router.push("/(tabs)")}
-          >
-            <Text className="text-background font-bold text-base">Browse Products</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <ScrollView
-          className="flex-1"
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingBottom: 100, alignItems: "center" }}
-        >
-          <View className="px-6 py-4" style={{ width: "100%", maxWidth: 840 }}>
-            {wishlist.map((item) => (
-              <View
-                key={item._id}
-                className="bg-surface rounded-3xl overflow-hidden mb-3"
-              >
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100, alignItems: "center" }}
+      >
+        <View className="px-6 py-4" style={{ width: "100%", maxWidth: palette.layout.compactContent }}>
+          {wishlist.map((item) => {
+            const removing = isWishlistItemPending(item._id);
+            const adding = isCartItemPending(item._id);
+            const inStock = item.stock > 0;
+
+            return (
+              <View key={item._id} className="bg-surface rounded-3xl overflow-hidden mb-3">
                 <View className="flex-row p-4">
                   <TouchableOpacity
                     activeOpacity={0.8}
@@ -103,11 +132,21 @@ function WishlistScreen() {
                     accessibilityRole="button"
                     accessibilityLabel={`View ${item.name}`}
                   >
-                    <Image
-                      source={item.images[0]}
-                      className="rounded-2xl bg-background-lighter"
-                      style={{ width: 96, height: 96, borderRadius: 8 }}
-                    />
+                    {item.images?.[0] ? (
+                      <Image
+                        source={{ uri: item.images[0] }}
+                        className="rounded-2xl bg-background-lighter"
+                        style={{ width: 96, height: 96, borderRadius: 8 }}
+                        accessibilityLabel={`${item.name} image`}
+                      />
+                    ) : (
+                      <View
+                        className="rounded-2xl bg-background-lighter items-center justify-center"
+                        style={{ width: 96, height: 96, borderRadius: 8 }}
+                      >
+                        <Ionicons name="image-outline" size={24} color={palette.text.tertiary} />
+                      </View>
+                    )}
                   </TouchableOpacity>
 
                   <View className="flex-1 ml-4">
@@ -128,95 +167,63 @@ function WishlistScreen() {
                       ${item.price.toFixed(2)}
                     </Text>
 
-                    {item.stock > 0 ? (
-                      <View className="flex-row items-center">
-                        <View className="w-2 h-2 bg-green-500 rounded-full mr-2" />
-                        <Text className="text-green-500 text-sm font-semibold">
-                          {item.stock} in stock
-                        </Text>
-                      </View>
-                    ) : (
-                      <View className="flex-row items-center">
-                        <View className="w-2 h-2 bg-red-500 rounded-full mr-2" />
-                        <Text className="text-red-500 text-sm font-semibold">Out of Stock</Text>
-                      </View>
-                    )}
+                    <View className="flex-row items-center">
+                      <View
+                        className={`w-2 h-2 rounded-full mr-2 ${inStock ? "bg-green-500" : "bg-red-500"}`}
+                      />
+                      <Text
+                        className={`text-sm font-semibold ${inStock ? "text-green-500" : "text-red-500"}`}
+                      >
+                        {inStock ? `${item.stock} in stock` : "Out of stock"}
+                      </Text>
+                    </View>
                   </View>
 
                   <TouchableOpacity
                     className="self-start bg-red-500/20 p-2 rounded-full"
                     activeOpacity={0.7}
                     onPress={() => handleRemoveFromWishlist(item._id, item.name)}
-                    disabled={isRemovingFromWishlist}
+                    disabled={removing}
                     accessibilityRole="button"
                     accessibilityLabel={`Remove ${item.name} from wishlist`}
                   >
-                    <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                    {removing ? (
+                      <ActivityIndicatorCompat />
+                    ) : (
+                      <Ionicons name="trash-outline" size={20} color={palette.accent.danger} />
+                    )}
                   </TouchableOpacity>
                 </View>
-                {item.stock > 0 && (
+
+                {inStock && (
                   <View className="px-4 pb-4">
                     <TouchableOpacity
                       className="bg-primary rounded-xl py-3 items-center"
                       activeOpacity={0.8}
                       onPress={() => handleAddToCart(item._id, item.name)}
-                      disabled={isAddingToCart}
+                      disabled={adding}
                       accessibilityRole="button"
                       accessibilityLabel={`Add ${item.name} to cart`}
                     >
-                      {isAddingToCart ? (
-                        <ActivityIndicator size="small" color="#121212" />
+                      {adding ? (
+                        <ActivityIndicatorCompat dark />
                       ) : (
-                        <Text className="text-background font-bold">Add to Cart</Text>
+                        <Text className="text-background font-bold">Add to cart</Text>
                       )}
                     </TouchableOpacity>
                   </View>
                 )}
               </View>
-            ))}
-          </View>
-        </ScrollView>
-      )}
+            );
+          })}
+        </View>
+      </ScrollView>
     </SafeScreen>
   );
-}
+};
+
+const ActivityIndicatorCompat = ({ dark = false }: { dark?: boolean }) => (
+  <ActivityIndicator size="small" color={dark ? palette.onPrimary : palette.accent.danger} />
+);
+
 export default WishlistScreen;
-
-function LoadingUI() {
-  return (
-    <SafeScreen>
-      <View className="px-6 pb-5 border-b border-surface flex-row items-center">
-        <TouchableOpacity onPress={() => router.back()} className="mr-4">
-          <Ionicons name="arrow-back" size={28} color="#FFFFFF" />
-        </TouchableOpacity>
-        <Text className="text-text-primary text-2xl font-bold">Wishlist</Text>
-      </View>
-      <View className="flex-1 items-center justify-center">
-        <ActivityIndicator size="large" color="#00D9FF" />
-        <Text className="text-text-secondary mt-4">Loading wishlist...</Text>
-      </View>
-    </SafeScreen>
-  );
-}
-
-function ErrorUI() {
-  return (
-    <SafeScreen>
-      <View className="px-6 pb-5 border-b border-surface flex-row items-center">
-        <TouchableOpacity onPress={() => router.back()} className="mr-4">
-          <Ionicons name="arrow-back" size={28} color="#fff" />
-        </TouchableOpacity>
-        <Text className="text-text-primary text-2xl font-bold">Wishlist</Text>
-      </View>
-      <View className="flex-1 items-center justify-center px-6">
-        <Ionicons name="alert-circle-outline" size={64} color="#FF6B6B" />
-        <Text className="text-text-primary font-semibold text-xl mt-4">
-          Failed to load wishlist
-        </Text>
-        <Text className="text-text-secondary text-center mt-2">
-          Please check your connection and try again
-        </Text>
-      </View>
-    </SafeScreen>
-  );
-}

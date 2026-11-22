@@ -1,24 +1,28 @@
+import palette from "@/lib/theme";
 import { Redirect, Tabs } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuth } from "@clerk/clerk-expo";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { BlurView } from "expo-blur";
-import { StyleSheet, useWindowDimensions } from "react-native";
+import { StyleSheet } from "react-native";
+
+import BrandLoader from "@/components/BrandLoader";
+import { useBreakpoints } from "@/hooks/useBreakpoints";
 
 const TabsLayout = () => {
   const { isSignedIn, isLoaded } = useAuth();
   const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
-  const tabBarInset = Math.max(16, (width - 720) / 2);
+  const { width, isTablet } = useBreakpoints();
+  const tabBarInset = isTablet ? (width - palette.breakpoints.expandedTabBar) / 2 : 16;
 
-  if (!isLoaded) return null; // for a better ux
-  if (!isSignedIn) return <Redirect href={"/(auth)"} />;
+  if (!isLoaded) return <BrandLoader label="Loading your store…" />;
+  if (!isSignedIn) return <Redirect href="/(auth)" />;
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: "#1DB954",
-        tabBarInactiveTintColor: "#B3B3B3",
+        tabBarActiveTintColor: palette.primary.DEFAULT,
+        tabBarInactiveTintColor: palette.text.secondary,
         tabBarStyle: {
           position: "absolute",
           backgroundColor: "transparent",
@@ -32,18 +36,9 @@ const TabsLayout = () => {
           overflow: "hidden",
         },
         tabBarBackground: () => (
-          <BlurView
-            intensity={80}
-            tint="dark"
-            style={StyleSheet.absoluteFill}
-            // StyleSheet.absoluteFill is equal to this 👇
-            // { position: "absolute", top: 0, right: 0, left: 0, bottom: 0 }
-          />
+          <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
         ),
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: 600,
-        },
+        tabBarLabelStyle: { fontSize: 12, fontWeight: "600" },
         headerShown: false,
       }}
     >

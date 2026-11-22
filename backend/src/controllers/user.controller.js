@@ -10,7 +10,7 @@ export async function addAddress(req, res) {
     const user = req.user;
 
     if (!fullName || !streetAddress || !city || !state || !zipCode) {
-      return res.status(400).json({ error: "Missing required address fields" });
+      return res.status(400).json({ message: "Missing required address fields" });
     }
 
     // if this is set as default, unset all other defaults
@@ -36,7 +36,7 @@ export async function addAddress(req, res) {
     res.status(201).json({ message: "Address added successfully", addresses: user.addresses });
   } catch (error) {
     console.error("Error in addAddress controller:", error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ message: "Internal server error" });
   }
 }
 
@@ -47,7 +47,7 @@ export async function getAddresses(req, res) {
     res.status(200).json({ addresses: user.addresses });
   } catch (error) {
     console.error("Error in getAddresses controller:", error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ message: "Internal server error" });
   }
 }
 
@@ -61,7 +61,7 @@ export async function updateAddress(req, res) {
     const user = req.user;
     const address = user.addresses.id(addressId);
     if (!address) {
-      return res.status(404).json({ error: "Address not found" });
+      return res.status(404).json({ message: "Address not found" });
     }
 
     // if this is set as default, unset all other defaults
@@ -85,7 +85,7 @@ export async function updateAddress(req, res) {
     res.status(200).json({ message: "Address updated successfully", addresses: user.addresses });
   } catch (error) {
     console.error("Error in updateAddress controller:", error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ message: "Internal server error" });
   }
 }
 
@@ -100,7 +100,7 @@ export async function deleteAddress(req, res) {
     res.status(200).json({ message: "Address deleted successfully", addresses: user.addresses });
   } catch (error) {
     console.error("Error in deleteAddress controller:", error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ message: "Internal server error" });
   }
 }
 
@@ -109,12 +109,12 @@ export async function addToWishlist(req, res) {
     const { productId } = req.body;
 
     if (!mongoose.isValidObjectId(productId)) {
-      return res.status(400).json({ error: "Invalid product ID" });
+      return res.status(400).json({ message: "Invalid product ID" });
     }
 
     const productExists = await Product.exists({ _id: productId });
     if (!productExists) {
-      return res.status(404).json({ error: "Product not found" });
+      return res.status(404).json({ message: "Product not found" });
     }
 
     const user = await User.findByIdAndUpdate(
@@ -122,12 +122,12 @@ export async function addToWishlist(req, res) {
       { $addToSet: { wishlist: productId } },
       { new: true }
     );
-    if (!user) return res.status(404).json({ error: "User not found" });
+    if (!user) return res.status(404).json({ message: "User not found" });
 
     res.status(200).json({ message: "Product added to wishlist", wishlist: user.wishlist });
   } catch (error) {
     console.error("Error in addToWishlist controller:", error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ message: "Internal server error" });
   }
 }
 
@@ -136,7 +136,7 @@ export async function removeFromWishlist(req, res) {
     const { productId } = req.params;
 
     if (!mongoose.isValidObjectId(productId)) {
-      return res.status(400).json({ error: "Invalid product ID" });
+      return res.status(400).json({ message: "Invalid product ID" });
     }
 
     const user = await User.findByIdAndUpdate(
@@ -144,12 +144,12 @@ export async function removeFromWishlist(req, res) {
       { $pull: { wishlist: productId } },
       { new: true }
     );
-    if (!user) return res.status(404).json({ error: "User not found" });
+    if (!user) return res.status(404).json({ message: "User not found" });
 
     res.status(200).json({ message: "Product removed from wishlist", wishlist: user.wishlist });
   } catch (error) {
     console.error("Error in removeFromWishlist controller:", error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ message: "Internal server error" });
   }
 }
 
@@ -161,6 +161,6 @@ export async function getWishlist(req, res) {
     res.status(200).json({ wishlist: user.wishlist });
   } catch (error) {
     console.error("Error in getWishlist controller:", error);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({ message: "Internal server error" });
   }
 }

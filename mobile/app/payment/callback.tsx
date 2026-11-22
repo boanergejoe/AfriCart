@@ -1,10 +1,13 @@
-import SafeScreen from "@/components/SafeScreen";
-import { useApi } from "@/lib/api";
+import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState } from "react";
 import { ActivityIndicator, Text, TouchableOpacity, View } from "react-native";
+
+import SafeScreen from "@/components/SafeScreen";
+import { useApi } from "@/lib/api";
+import palette from "@/lib/theme";
+import { delay } from "@/lib/utils";
 
 type PaymentStatus = "initiating" | "pending" | "succeeded" | "failed" | "invalid" | "reversed";
 type CallbackState = PaymentStatus | "checking" | "unavailable";
@@ -12,6 +15,9 @@ type CallbackState = PaymentStatus | "checking" | "unavailable";
 interface PaymentStatusResponse {
   paymentStatus: PaymentStatus;
 }
+
+const MAX_STATUS_CHECKS = 15;
+const CHECK_INTERVAL_MS = 4000;
 
 const PaymentCallbackScreen = () => {
   const {
@@ -31,21 +37,21 @@ const PaymentCallbackScreen = () => {
   const [state, setState] = useState<CallbackState>("checking");
 
   useEffect(() => {
-    let cancelled = false;
+    if (!merchantReference) {
+      setState("unavailable");
+      return undefined;
+    }
+
+    const abortController = new AbortController();
 
     const checkPayment = async () => {
-      if (!merchantReference) {
-        setState("unavailable");
-        return;
-      }
-
       try {
-        for (let attempt = 0; attempt < 15; attempt += 1) {
+        for (let attempt = 0; attempt < MAX_STATUS_CHECKS; attempt += 1) {
           const { data } = await api.get<PaymentStatusResponse>(
             `/payment/pesapal/status/${encodeURIComponent(merchantReference)}`,
             { params: trackingId ? { orderTrackingId: trackingId } : undefined }
           );
-          if (cancelled) return;
+          if (abortController.signal.aborted) return;
 
           if (data.paymentStatus === "succeeded") {
             setState("succeeded");
@@ -59,48 +65,49 @@ const PaymentCallbackScreen = () => {
             return;
           }
 
-          await new Promise((resolve) => setTimeout(resolve, 4000));
+          await delay(CHECK_INTERVAL_MS, abortController.signal);
         }
 
-        if (!cancelled) setState("pending");
+        if (!abortController.signal.aborted) setState("pending");
       } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") return;
         console.error("Unable to verify PesaPal payment on the callback screen:", error);
-        if (!cancelled) setState("unavailable");
+        if (!abortController.signal.aborted) setState("unavailable");
       }
     };
 
     void checkPayment();
-    return () => {
-      cancelled = true;
-    };
+    return () => abortController.abort();
   }, [api, merchantReference, trackingId, queryClient]);
 
   const messageByState: Record<CallbackState, string> = {
-    checking: "Verifying your payment directly with PesaPal...",
+    checking: "Verifying your payment directly with PesaPal…",
     succeeded: "Payment confirmed. Your AfriCart order has been saved.",
     initiating: "AfriCart is still preparing the payment. Check My Orders before trying again.",
     failed: "Payment was not completed. Your cart is still available.",
     invalid: "PesaPal could not find a completed payment. Your cart is still available.",
     reversed: "PesaPal reversed this payment. Contact support with your receipt.",
-    pending: "Payment is still processing. Check My Orders before trying to pay again.",
+    pending: "Payment is still processing. Check My Orders before paying again.",
     unavailable:
-      "We could not verify the payment right now. The server will continue checking PesaPal; check My Orders before making another payment.",
+      "We could not verify the payment right now. Check My Orders before making another payment.",
   };
+
+  const isSuccess = state === "succeeded";
 
   return (
     <SafeScreen>
-      <View className="flex-1 items-center justify-center px-8">
+      <View className="flex-1 items-center justify-center px-8" accessibilityRole="alert">
         {state === "checking" ? (
-          <ActivityIndicator size="large" color="#1DB954" />
+          <ActivityIndicator size="large" color={palette.primary.DEFAULT} />
         ) : (
           <Ionicons
-            name={state === "succeeded" ? "checkmark-circle" : "information-circle"}
+            name={isSuccess ? "checkmark-circle" : "information-circle"}
             size={68}
-            color={state === "succeeded" ? "#1DB954" : "#F5B942"}
+            color={isSuccess ? palette.primary.DEFAULT : palette.accent.warning}
           />
         )}
         <Text className="text-text-primary text-2xl font-bold text-center mt-5">
-          {state === "succeeded" ? "Payment confirmed" : "Payment status"}
+          {isSuccess ? "Payment confirmed" : "Payment status"}
         </Text>
         <Text className="text-text-secondary text-base text-center leading-6 mt-3">
           {messageByState[state]}

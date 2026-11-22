@@ -1,16 +1,35 @@
-import SafeScreen from "@/components/SafeScreen";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";
-import { ScrollView, Switch, Text, TouchableOpacity, View } from "react-native";
+import { Alert, Platform, ScrollView, Switch, Text, TouchableOpacity, View } from "react-native";
+
+import SafeScreen from "@/components/SafeScreen";
+import palette from "@/lib/theme";
+
+type SettingIcon = keyof typeof Ionicons.glyphMap;
 
 type SecurityOption = {
   id: string;
-  icon: string;
+  icon: SettingIcon;
   title: string;
   description: string;
   type: "navigation" | "toggle";
   value?: boolean;
+};
+
+type AccountOption = {
+  id: string;
+  icon: SettingIcon;
+  title: string;
+  description: string;
+};
+
+const showInfo = (title: string, message: string) => {
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    window.alert(`${title}\n\n${message}`);
+    return;
+  }
+  Alert.alert(title, message);
 };
 
 function PrivacyAndSecurityScreen() {
@@ -82,7 +101,7 @@ function PrivacyAndSecurityScreen() {
     },
   ];
 
-  const accountSettings = [
+  const accountSettings: AccountOption[] = [
     {
       id: "activity",
       icon: "time-outline",
@@ -126,15 +145,61 @@ function PrivacyAndSecurityScreen() {
     }
   };
 
+  const handleUnavailable = (title: string, description: string) => {
+    showInfo("Not available yet", `${title} ${description}`);
+  };
+
+  const renderSetting = (setting: SecurityOption) => (
+    <View key={setting.id} className="bg-surface rounded-2xl p-4 mb-3">
+      <View className="flex-row items-center">
+        <View className="bg-primary/20 rounded-full w-12 h-12 items-center justify-center mr-4">
+          <Ionicons name={setting.icon} size={24} color={palette.primary.DEFAULT} />
+        </View>
+        <View className="flex-1">
+          <Text className="text-text-primary font-bold text-base mb-1">{setting.title}</Text>
+          <Text className="text-text-secondary text-sm">{setting.description}</Text>
+        </View>
+        {setting.type === "toggle" ? (
+          <Switch
+            value={setting.value}
+            onValueChange={(value) => handleToggle(setting.id, value)}
+            thumbColor={palette.text.primary}
+            trackColor={{ false: palette.surface.DEFAULT, true: palette.primary.DEFAULT }}
+            accessibilityLabel={setting.title}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: setting.value }}
+          />
+        ) : (
+          <TouchableOpacity
+            onPress={() =>
+              showInfo(
+                "Password changes",
+                "Sign in with the same Google or Apple account to manage your password."
+              )
+            }
+            accessibilityRole="button"
+            accessibilityLabel={setting.title}
+          >
+            <Ionicons name="chevron-forward" size={20} color={palette.text.tertiary} />
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+
   return (
     <SafeScreen>
-      {/* HEADER */}
       <View
         className="px-6 pb-5 border-b border-surface flex-row items-center"
-        style={{ width: "100%", maxWidth: 840, alignSelf: "center" }}
+        style={{ width: "100%", maxWidth: palette.layout.compactContent, alignSelf: "center" }}
       >
-        <TouchableOpacity onPress={() => router.back()} className="mr-4">
-          <Ionicons name="arrow-back" size={28} color="#fff" />
+        <TouchableOpacity
+          onPress={() => router.back()}
+          className="mr-4"
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <Ionicons name="arrow-back" size={28} color={palette.text.primary} />
         </TouchableOpacity>
         <Text className="text-text-primary text-2xl font-bold">Privacy & Security</Text>
       </View>
@@ -144,56 +209,36 @@ function PrivacyAndSecurityScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 80, alignItems: "center" }}
       >
-        <View style={{ width: "100%", maxWidth: 840 }}>
-        {/* SECURITY SETTING */}
-        <View className="px-6 pt-6">
-          <Text className="text-text-primary text-lg font-bold mb-4">Security</Text>
+        <View style={{ width: "100%", maxWidth: palette.layout.compactContent }}>
+          <View className="px-6 pt-6">
+            <Text className="text-text-primary text-lg font-bold mb-4">Security</Text>
+            {securitySettings.map(renderSetting)}
+          </View>
 
-          {securitySettings.map((setting) => (
-            <TouchableOpacity
-              key={setting.id}
-              className="bg-surface rounded-2xl p-4 mb-3"
-              activeOpacity={setting.type === "toggle" ? 1 : 0.7}
-            >
-              <View className="flex-row items-center">
-                <View className="bg-primary/20 rounded-full w-12 h-12 items-center justify-center mr-4">
-                  <Ionicons name={setting.icon as any} size={24} color="#1DB954" />
-                </View>
+          <View className="px-6 pt-4">
+            <Text className="text-text-primary text-lg font-bold mb-4">Privacy</Text>
+            {privacySettings.map(renderSetting)}
+          </View>
 
-                <View className="flex-1">
-                  <Text className="text-text-primary font-bold text-base mb-1">
-                    {setting.title}
-                  </Text>
-                  <Text className="text-text-secondary text-sm">{setting.description}</Text>
-                </View>
-
-                {setting.type === "toggle" ? (
-                  <Switch
-                    value={setting.value}
-                    onValueChange={(value) => handleToggle(setting.id, value)}
-                    thumbColor="#FFFFFF"
-                    trackColor={{ false: "#2A2A2A", true: "#1DB954" }}
-
-                    // ios_backgroundColor={"purple"}
-                  />
-                ) : (
-                  <Ionicons name="chevron-forward" size={20} color="#666" />
-                )}
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Privacy Section */}
-        <View className="px-6 pt-4">
-          <Text className="text-text-primary text-lg font-bold mb-4">Privacy</Text>
-
-          {privacySettings.map((setting) => (
-            <View key={setting.id}>
-              <View className="bg-surface rounded-2xl p-4 mb-3">
+          <View className="px-6 pt-4">
+            <Text className="text-text-primary text-lg font-bold mb-4">Account</Text>
+            {accountSettings.map((setting) => (
+              <TouchableOpacity
+                key={setting.id}
+                className="bg-surface rounded-2xl p-4 mb-3"
+                activeOpacity={0.7}
+                onPress={() =>
+                  handleUnavailable(
+                    setting.title,
+                    "is not available in this build. Contact support if you need help."
+                  )
+                }
+                accessibilityRole="button"
+                accessibilityLabel={setting.title}
+              >
                 <View className="flex-row items-center">
                   <View className="bg-primary/20 rounded-full w-12 h-12 items-center justify-center mr-4">
-                    <Ionicons name={setting.icon as any} size={24} color="#1DB954" />
+                    <Ionicons name={setting.icon} size={24} color={palette.primary.DEFAULT} />
                   </View>
                   <View className="flex-1">
                     <Text className="text-text-primary font-bold text-base mb-1">
@@ -201,73 +246,53 @@ function PrivacyAndSecurityScreen() {
                     </Text>
                     <Text className="text-text-secondary text-sm">{setting.description}</Text>
                   </View>
-                  <Switch
-                    value={setting.value}
-                    onValueChange={(value) => handleToggle(setting.id, value)}
-                    trackColor={{ false: "#2A2A2A", true: "#1DB954" }}
-                    thumbColor="#FFFFFF"
-                  />
+                  <Ionicons name="chevron-forward" size={20} color={palette.text.tertiary} />
                 </View>
-              </View>
-            </View>
-          ))}
-        </View>
+              </TouchableOpacity>
+            ))}
+          </View>
 
-        {/* ACCOUNT SECTION */}
-        <View className="px-6 pt-4">
-          <Text className="text-text-primary text-lg font-bold mb-4">Account</Text>
-
-          {accountSettings.map((setting) => (
+          <View className="px-6 pt-4">
             <TouchableOpacity
-              key={setting.id}
-              className="bg-surface rounded-2xl p-4 mb-3"
+              className="bg-surface rounded-2xl p-5 flex-row items-center justify-between border-2 border-red-500/20"
               activeOpacity={0.7}
+              onPress={() =>
+                showInfo(
+                  "Delete account",
+                  "Contact support from the app to permanently remove your account and its data."
+                )
+              }
+              accessibilityRole="button"
+              accessibilityLabel="Delete account"
             >
               <View className="flex-row items-center">
-                <View className="bg-primary/20 rounded-full w-12 h-12 items-center justify-center mr-4">
-                  <Ionicons name={setting.icon as any} size={24} color="#1DB954" />
+                <View className="bg-red-500/20 rounded-full w-12 h-12 items-center justify-center mr-4">
+                  <Ionicons name="trash-outline" size={24} color={palette.accent.danger} />
                 </View>
-                <View className="flex-1">
-                  <Text className="text-text-primary font-bold text-base mb-1">
-                    {setting.title}
+                <View>
+                  <Text className="text-red-500 font-bold text-base mb-1">Delete Account</Text>
+                  <Text className="text-text-secondary text-sm">
+                    Permanently delete your account
                   </Text>
-                  <Text className="text-text-secondary text-sm">{setting.description}</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#666" />
               </View>
+              <Ionicons name="chevron-forward" size={20} color={palette.accent.danger} />
             </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* DELETE ACC BTN */}
-        <View className="px-6 pt-4">
-          <TouchableOpacity
-            className="bg-surface rounded-2xl p-5 flex-row items-center justify-between border-2 border-red-500/20"
-            activeOpacity={0.7}
-          >
-            <View className="flex-row items-center">
-              <View className="bg-red-500/20 rounded-full w-12 h-12 items-center justify-center mr-4">
-                <Ionicons name="trash-outline" size={24} color="#EF4444" />
-              </View>
-              <View>
-                <Text className="text-red-500 font-bold text-base mb-1">Delete Account</Text>
-                <Text className="text-text-secondary text-sm">Permanently delete your account</Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#EF4444" />
-          </TouchableOpacity>
-        </View>
-
-        {/* INFO ALERT */}
-        <View className="px-6 pt-6 pb-4">
-          <View className="bg-primary/10 rounded-2xl p-4 flex-row">
-            <Ionicons name="information-circle-outline" size={24} color="#1DB954" />
-            <Text className="text-text-secondary text-sm ml-3 flex-1">
-              We take your privacy seriously. Your data is encrypted and stored securely. You can
-              manage your privacy settings at any time.
-            </Text>
           </View>
-        </View>
+
+          <View className="px-6 pt-6 pb-4">
+            <View className="bg-primary/10 rounded-2xl p-4 flex-row">
+              <Ionicons
+                name="information-circle-outline"
+                size={24}
+                color={palette.primary.DEFAULT}
+              />
+              <Text className="text-text-secondary text-sm ml-3 flex-1">
+                We take your privacy seriously. Your data is encrypted and stored securely. Some
+                preferences in this build are shown for reference and are not saved.
+              </Text>
+            </View>
+          </View>
         </View>
       </ScrollView>
     </SafeScreen>

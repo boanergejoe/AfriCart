@@ -1,19 +1,23 @@
-import useCart from "@/hooks/useCart";
-import useWishlist from "@/hooks/useWishlist";
-import { Product } from "@/types";
+import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
   ActivityIndicator,
+  FlatList,
+  Platform,
+  Text,
+  TouchableOpacity,
+  View,
   Alert,
-  useWindowDimensions,
 } from "react-native";
+
+import { useBreakpoints } from "@/hooks/useBreakpoints";
+import useCart from "@/hooks/useCart";
+import useWishlist from "@/hooks/useWishlist";
+import palette from "@/lib/theme";
+import { getErrorMessage } from "@/lib/utils";
+import { Product } from "@/types";
 
 interface ProductsGridProps {
   isLoading: boolean;
@@ -32,127 +36,136 @@ const ProductsGrid = ({
   onRetry,
   hasCatalogProducts,
 }: ProductsGridProps) => {
-  const { width: windowWidth } = useWindowDimensions();
-  const numColumns = windowWidth >= 1200 ? 4 : windowWidth >= 768 ? 3 : 2;
+  const { columns: numColumns } = useBreakpoints();
   const cardWidth: `${number}%` = `${100 / numColumns - 2}%`;
 
-  const { isInWishlist, toggleWishlist, isAddingToWishlist, isRemovingFromWishlist } =
-    useWishlist();
+  const { isInWishlist, toggleWishlist, isProductPending: isWishlistItemPending } = useWishlist();
+  const { addToCart, isProductPending: isCartItemPending } = useCart();
 
-  const { isAddingToCart, addToCart } = useCart();
-
-  const handleAddToCart = (productId: string, productName: string) => {
+  const handleAddToCart = (product: Product) => {
     addToCart(
-      { productId, quantity: 1 },
+      { productId: product._id, quantity: 1 },
       {
-        onSuccess: () => {
-          Alert.alert("Success", `${productName} added to cart!`);
-        },
-        onError: (error: any) => {
-          Alert.alert("Error", error?.response?.data?.error || "Failed to add to cart");
-        },
+        onSuccess: () => showMessage("Added to cart", `${product.name} is in your cart.`),
+        onError: (error: unknown) => showMessage("Could not add to cart", getErrorMessage(error)),
       }
     );
   };
 
-  const renderProduct = ({ item: product }: { item: Product }) => (
-    <View className="bg-surface rounded-3xl overflow-hidden mb-3" style={{ width: cardWidth }}>
-      <View className="relative" style={{ backgroundColor: "#282828" }}>
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => router.push(`/product/${product._id}`)}
-          accessibilityRole="button"
-          accessibilityLabel={`View ${product.name}`}
-        >
-          <ProductImage uri={product.images?.[0]} label={`${product.name} product image`} />
-        </TouchableOpacity>
+  const handleToggleWishlist = (product: Product) => {
+    toggleWishlist(product._id, {
+      onError: (error: unknown) => showMessage("Wishlist update failed", getErrorMessage(error)),
+    });
+  };
 
-        <TouchableOpacity
-          className="absolute top-3 right-3 bg-black/30 backdrop-blur-xl p-2 rounded-full"
-          activeOpacity={0.7}
-          onPress={() => toggleWishlist(product._id)}
-          disabled={isAddingToWishlist || isRemovingFromWishlist}
-          accessibilityRole="button"
-          accessibilityLabel={`${isInWishlist(product._id) ? "Remove" : "Add"} ${product.name} ${
-            isInWishlist(product._id) ? "from" : "to"
-          } wishlist`}
-        >
-          {isAddingToWishlist || isRemovingFromWishlist ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Ionicons
-              name={isInWishlist(product._id) ? "heart" : "heart-outline"}
-              size={18}
-              color={isInWishlist(product._id) ? "#FF6B6B" : "#FFFFFF"}
-            />
-          )}
-        </TouchableOpacity>
-      </View>
+  const renderProduct = ({ item: product }: { item: Product }) => {
+    const wishlistPending = isWishlistItemPending(product._id);
+    const cartPending = isCartItemPending(product._id);
+    const isWishlisted = isInWishlist(product._id);
 
-      <View className="p-3">
-        <Text className="text-text-secondary text-xs mb-1">{product.category}</Text>
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => router.push(`/product/${product._id}`)}
-          accessibilityRole="button"
-          accessibilityLabel={`View ${product.name}`}
-        >
-          <Text className="text-text-primary font-bold text-sm mb-2" numberOfLines={2}>
-            {product.name}
-          </Text>
-        </TouchableOpacity>
-
-        <View className="flex-row items-center mb-2">
-          <Ionicons name="star" size={12} color="#FFC107" />
-          <Text className="text-text-primary text-xs font-semibold ml-1">
-            {product.averageRating.toFixed(1)}
-          </Text>
-          <Text className="text-text-secondary text-xs ml-1">({product.totalReviews})</Text>
-        </View>
-
-        <View className="flex-row items-center justify-between">
-          <Text className="text-primary font-bold text-lg">${product.price.toFixed(2)}</Text>
+    return (
+      <View className="bg-surface rounded-3xl overflow-hidden mb-3" style={{ width: cardWidth }}>
+        <View className="relative" style={{ backgroundColor: palette.surface.DEFAULT }}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => router.push(`/product/${product._id}`)}
+            accessibilityRole="button"
+            accessibilityLabel={`View ${product.name}`}
+          >
+            <ProductImage uri={product.images?.[0]} label={`${product.name} product image`} />
+          </TouchableOpacity>
 
           <TouchableOpacity
-            className="bg-primary rounded-full w-8 h-8 items-center justify-center"
+            className="absolute top-3 right-3 bg-black/30 backdrop-blur-xl p-2 rounded-full"
             activeOpacity={0.7}
-            onPress={() => handleAddToCart(product._id, product.name)}
-            disabled={isAddingToCart}
+            onPress={() => handleToggleWishlist(product)}
+            disabled={wishlistPending}
             accessibilityRole="button"
-            accessibilityLabel={`Add ${product.name} to cart`}
+            accessibilityState={{ selected: isWishlisted, disabled: wishlistPending }}
+            accessibilityLabel={`${isWishlisted ? "Remove" : "Add"} ${product.name} ${
+              isWishlisted ? "from" : "to"
+            } wishlist`}
           >
-            {isAddingToCart ? (
-              <ActivityIndicator size="small" color="#121212" />
+            {wishlistPending ? (
+              <ActivityIndicator size="small" color={palette.text.primary} />
             ) : (
-              <Ionicons name="add" size={18} color="#121212" />
+              <Ionicons
+                name={isWishlisted ? "heart" : "heart-outline"}
+                size={18}
+                color={isWishlisted ? palette.accent.danger : palette.text.primary}
+              />
             )}
           </TouchableOpacity>
         </View>
+
+        <View className="p-3">
+          <Text className="text-text-secondary text-xs mb-1">{product.category}</Text>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => router.push(`/product/${product._id}`)}
+            accessibilityRole="button"
+            accessibilityLabel={`View ${product.name}`}
+          >
+            <Text className="text-text-primary font-bold text-sm mb-2" numberOfLines={2}>
+              {product.name}
+            </Text>
+          </TouchableOpacity>
+
+          <View className="flex-row items-center mb-2">
+            <Ionicons name="star" size={12} color={palette.accent.warning} />
+            <Text className="text-text-primary text-xs font-semibold ml-1">
+              {(product.averageRating ?? 0).toFixed(1)}
+            </Text>
+            <Text className="text-text-secondary text-xs ml-1">
+              ({product.totalReviews ?? 0})
+            </Text>
+          </View>
+
+          <View className="flex-row items-center justify-between">
+            <Text className="text-primary font-bold text-lg">${product.price.toFixed(2)}</Text>
+            <TouchableOpacity
+              className="bg-primary rounded-full w-8 h-8 items-center justify-center"
+              activeOpacity={0.7}
+              onPress={() => handleAddToCart(product)}
+              disabled={cartPending || product.stock === 0}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: cartPending || product.stock === 0 }}
+              accessibilityLabel={`Add ${product.name} to cart`}
+            >
+              {cartPending ? (
+                <ActivityIndicator size="small" color={palette.onPrimary} />
+              ) : (
+                <Ionicons name="add" size={18} color={palette.onPrimary} />
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   if (isLoading || (isError && isFetching)) {
     return (
-      <View className="py-20 items-center justify-center">
-        <ActivityIndicator size="large" color="#00D9FF" />
-        <Text className="text-text-secondary mt-4">Loading products...</Text>
+      <View className="py-20 items-center justify-center" accessibilityRole="progressbar">
+        <ActivityIndicator size="large" color={palette.primary.DEFAULT} />
+        <Text className="text-text-secondary mt-4">Loading products…</Text>
       </View>
     );
   }
 
   if (isError) {
     return (
-      <View className="py-20 items-center justify-center">
-        <Ionicons name="alert-circle-outline" size={48} color="#FF6B6B" />
+      <View className="py-20 items-center justify-center" accessibilityRole="alert">
+        <Ionicons name="alert-circle-outline" size={48} color={palette.accent.danger} />
         <Text className="text-text-primary font-semibold mt-4">Failed to load products</Text>
         <Text className="text-text-secondary text-sm mt-2 text-center px-6">
-          Check that the backend is running, then try again.
+          Check your connection, then try again.
         </Text>
         <TouchableOpacity
           className="bg-primary rounded-full px-6 py-3 mt-5"
           activeOpacity={0.8}
           accessibilityRole="button"
+          accessibilityLabel="Retry loading products"
           onPress={onRetry}
         >
           <Text className="text-background font-bold">Retry</Text>
@@ -176,6 +189,14 @@ const ProductsGrid = ({
   );
 };
 
+const showMessage = (title: string, message: string) => {
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    window.alert(`${title}\n\n${message}`);
+    return;
+  }
+  Alert.alert(title, message);
+};
+
 export default ProductsGrid;
 
 function ProductImage({ uri, label }: { uri?: string; label: string }) {
@@ -187,16 +208,8 @@ function ProductImage({ uri, label }: { uri?: string; label: string }) {
 
   if (!uri || hasError) {
     return (
-      <View
-        className="w-full items-center justify-center bg-background-lighter"
-        style={{
-          width: "100%",
-          aspectRatio: 1,
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Ionicons name="image-outline" size={32} color="#6A6A6A" />
+      <View className="w-full items-center justify-center bg-background-lighter" style={{ aspectRatio: 1 }}>
+        <Ionicons name="image-outline" size={32} color={palette.text.tertiary} />
       </View>
     );
   }
@@ -208,7 +221,7 @@ function ProductImage({ uri, label }: { uri?: string; label: string }) {
       transition={180}
       accessibilityLabel={label}
       onError={() => setHasError(true)}
-      style={{ width: "100%", aspectRatio: 1, backgroundColor: "#282828" }}
+      style={{ width: "100%", aspectRatio: 1, backgroundColor: palette.surface.DEFAULT }}
     />
   );
 }
@@ -218,14 +231,16 @@ function NoProductsFound({ hasCatalogProducts }: { hasCatalogProducts: boolean }
     <View className="py-20 items-center justify-center">
       <Ionicons
         name={hasCatalogProducts ? "search-outline" : "bag-outline"}
-        size={48}
-        color="#666"
+        size={64}
+        color={palette.text.tertiary}
       />
       <Text className="text-text-primary font-semibold mt-4">
-        {hasCatalogProducts ? "No products match your filters" : "No products are available yet"}
+        {hasCatalogProducts ? "No matching products" : "No products yet"}
       </Text>
-      <Text className="text-text-secondary text-sm mt-2">
-        {hasCatalogProducts ? "Try adjusting your filters" : "Check back soon for new products"}
+      <Text className="text-text-secondary text-sm mt-2 text-center px-6">
+        {hasCatalogProducts
+          ? "Try another search term or category."
+          : "Check back soon for new arrivals."}
       </Text>
     </View>
   );

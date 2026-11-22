@@ -1,49 +1,36 @@
 import axiosInstance from "./axios";
 
+const request = async (method, url, config = {}, payload) => {
+  const { data } = await axiosInstance.request({
+    method,
+    url,
+    ...config,
+    ...(payload === undefined ? {} : { data: payload }),
+  });
+  return data;
+};
+
+export const adminApi = {
+  checkAccess: () => request("get", "/admin/access"),
+};
+
 export const productApi = {
-  getAll: async () => {
-    const { data } = await axiosInstance.get("/admin/products");
-    return data;
-  },
-
-  create: async (formData) => {
-    const { data } = await axiosInstance.post("/admin/products", formData);
-    return data;
-  },
-
-  update: async ({ id, formData }) => {
-    const { data } = await axiosInstance.put(`/admin/products/${id}`, formData);
-    return data;
-  },
-
-  delete: async (productId) => {
-    const { data } = await axiosInstance.delete(`/admin/products/${productId}`);
-    return data;
-  },
+  getAll: (params) => request("get", "/admin/products", { params }),
+  create: (formData) => request("post", "/admin/products", {}, formData),
+  update: ({ id, formData }) => request("put", `/admin/products/${id}`, {}, formData),
+  delete: (productId) => request("delete", `/admin/products/${productId}`),
 };
 
 export const orderApi = {
-  getAll: async () => {
-    const { data } = await axiosInstance.get("/admin/orders");
-    return data;
-  },
-
-  updateStatus: async ({ orderId, status }) => {
-    const { data } = await axiosInstance.patch(`/admin/orders/${orderId}/status`, { status });
-    return data;
-  },
+  getAll: (params) => request("get", "/admin/orders", { params }),
+  updateStatus: ({ orderId, status }) =>
+    request("patch", `/admin/orders/${orderId}/status`, {}, { status }),
 };
 
 export const statsApi = {
-  getDashboard: async () => {
-    const { data } = await axiosInstance.get("/admin/stats");
-    return data;
-  },
+  getDashboard: () => request("get", "/admin/stats"),
 };
 
 export const customerApi = {
-  getAll: async () => {
-    const { data } = await axiosInstance.get("/admin/customers");
-    return data;
-  },
+  getAll: (params) => request("get", "/admin/customers", { params }),
 };

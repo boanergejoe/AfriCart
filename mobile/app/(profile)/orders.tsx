@@ -1,17 +1,26 @@
+import palette from "@/lib/theme";
+import { EmptyState } from "@/components/EmptyState";
+import { ErrorState } from "@/components/ErrorState";
+import LoadingState from "@/components/LoadingState";
 import RatingModal from "@/components/RatingModal";
 import SafeScreen from "@/components/SafeScreen";
 import { useOrders } from "@/hooks/useOrders";
 import { useReviews } from "@/hooks/useReviews";
-import { capitalizeFirstLetter, formatDate, getStatusColor } from "@/lib/utils";
+import {
+  capitalizeFirstLetter,
+  formatDate,
+  getErrorMessage,
+  getStatusColor,
+} from "@/lib/utils";
 import { Order } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useState } from "react";
-import { ActivityIndicator, Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 function OrdersScreen() {
-  const { data: orders, isLoading, isError } = useOrders();
+  const { data: orders, isLoading, isError, refetch } = useOrders();
   const { createReviewAsync, isCreatingReview } = useReviews();
 
   const [showRatingModal, setShowRatingModal] = useState(false);
@@ -56,8 +65,8 @@ function OrdersScreen() {
       setShowRatingModal(false);
       setSelectedOrder(null);
       setProductRatings({});
-    } catch (error: any) {
-      Alert.alert("Error", error?.response?.data?.error || "Failed to submit rating");
+    } catch (error) {
+      Alert.alert("Could not submit rating", getErrorMessage(error));
     }
   };
 
@@ -65,25 +74,39 @@ function OrdersScreen() {
     <SafeScreen>
       {/* Header */}
       <View className="px-6 pb-5 border-b border-surface flex-row items-center">
-        <TouchableOpacity onPress={() => router.back()} className="mr-4">
-          <Ionicons name="arrow-back" size={28} color="#FFFFFF" />
+        <TouchableOpacity
+          onPress={() => router.back()}
+          className="mr-4"
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <Ionicons name="arrow-back" size={28} color={palette.text.primary} />
         </TouchableOpacity>
         <Text className="text-text-primary text-2xl font-bold">My Orders</Text>
       </View>
 
       {isLoading ? (
-        <LoadingUI />
+        <LoadingState message="Loading orders…" />
       ) : isError ? (
-        <ErrorUI />
+        <ErrorState
+          title="Failed to load orders"
+          onRetry={() => {
+            void refetch();
+          }}
+        />
       ) : !orders || orders.length === 0 ? (
-        <EmptyUI />
+        <EmptyState
+          icon="receipt-outline"
+          title="No orders yet"
+          description="Your order history will appear here."
+        />
       ) : (
         <ScrollView
           className="flex-1"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{ paddingBottom: 100, alignItems: "center" }}
         >
-          <View className="px-6 py-4" style={{ width: "100%", maxWidth: 840 }}>
+          <View className="px-6 py-4" style={{ width: "100%", maxWidth: palette.layout.compactContent }}>
             {orders.map((order) => {
               const totalItems = order.orderItems.reduce((sum, item) => sum + item.quantity, 0);
               const firstImage = order.orderItems[0]?.image || "";
@@ -155,7 +178,7 @@ function OrdersScreen() {
                     {order.status === "delivered" &&
                       (order.hasReviewed ? (
                         <View className="bg-primary/20 px-5 py-3 rounded-full flex-row items-center">
-                          <Ionicons name="checkmark-circle" size={18} color="#1DB954" />
+                          <Ionicons name="checkmark-circle" size={18} color={palette.primary.DEFAULT} />
                           <Text className="text-primary font-bold text-sm ml-2">Reviewed</Text>
                         </View>
                       ) : (
@@ -163,8 +186,10 @@ function OrdersScreen() {
                           className="bg-primary px-5 py-3 rounded-full flex-row items-center"
                           activeOpacity={0.7}
                           onPress={() => handleOpenRating(order)}
+                          accessibilityRole="button"
+                          accessibilityLabel={`Rate products from order ${order._id.slice(-8)}`}
                         >
-                          <Ionicons name="star" size={18} color="#121212" />
+                          <Ionicons name="star" size={18} color={palette.onPrimary} />
                           <Text className="text-background font-bold text-sm ml-2">
                             Leave Rating
                           </Text>
@@ -193,36 +218,3 @@ function OrdersScreen() {
   );
 }
 export default OrdersScreen;
-
-function LoadingUI() {
-  return (
-    <View className="flex-1 items-center justify-center">
-      <ActivityIndicator size="large" color="#00D9FF" />
-      <Text className="text-text-secondary mt-4">Loading orders...</Text>
-    </View>
-  );
-}
-
-function ErrorUI() {
-  return (
-    <View className="flex-1 items-center justify-center px-6">
-      <Ionicons name="alert-circle-outline" size={64} color="#FF6B6B" />
-      <Text className="text-text-primary font-semibold text-xl mt-4">Failed to load orders</Text>
-      <Text className="text-text-secondary text-center mt-2">
-        Please check your connection and try again
-      </Text>
-    </View>
-  );
-}
-
-function EmptyUI() {
-  return (
-    <View className="flex-1 items-center justify-center px-6">
-      <Ionicons name="receipt-outline" size={80} color="#666" />
-      <Text className="text-text-primary font-semibold text-xl mt-4">No orders yet</Text>
-      <Text className="text-text-secondary text-center mt-2">
-        Your order history will appear here
-      </Text>
-    </View>
-  );
-}

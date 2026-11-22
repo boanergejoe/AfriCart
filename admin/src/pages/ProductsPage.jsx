@@ -1,474 +1,522 @@
-import { useState } from "react";
-import { PlusIcon, PencilIcon, Trash2Icon, XIcon, ImageIcon } from "lucide-react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { productApi } from "../lib/api";
-import { getStockStatusBadge } from "../lib/utils";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ImageIcon,
+  PackagePlusIcon,
+  PencilIcon,
+  SearchIcon,
+  Trash2Icon,
+  XIcon,
+} from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+import ConfirmDialog from "../components/ConfirmDialog.jsx";
+import { EmptyState, ErrorState, LoadingState } from "../components/StateViews.jsx";
+import ImageWithFallback from "../components/ImageWithFallback.jsx";
+import { productApi } from "../lib/api.js";
+import { useToast } from "../lib/toast.js";
+import { formatCurrency, getErrorMessage, getStockStatusBadge } from "../lib/utils.js";
+
+const EMPTY_FORM = { name: "", category: "", price: "", stock: "", description: "" };
+const CATEGORIES = ["Electronics", "Accessories", "Fashion", "Sports", "Books"];
+const PAGE_SIZE = 9;
 
 function ProductsPage() {
+  const queryClient = useQueryClient();
+  const { notify } = useToast();
+  const nameInputRef = useRef(null);
+
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("");
+  const [page, setPage] = useState(1);
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
-  const [formData, setFormData] = useState({
-    name: "",
-    category: "",
-    price: "",
-    stock: "",
-    description: "",
-  });
-  const [images, setImages] = useState([]);
-  const [imagePreviews, setImagePreviews] = useState([]);
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [previews, setPreviews] = useState([]);
+  const [removedImages, setRemovedImages] = useState([]);
   const [imageError, setImageError] = useState("");
-  const [mutationError, setMutationError] = useState("");
+  const [productToDelete, setProductToDelete] = useState(null);
 
-  const queryClient = useQueryClient();
+  const queryParams = useMemo(
+    () => ({ search: search.trim() || undefined, category: category || undefined, page, limit: PAGE_SIZE }),
+    [search, category, page]
+  );
 
-  const {
-    data: products = [],
-    isLoading,
-    isError,
-    refetch,
-  } = useQuery({
-    queryKey: ["products"],
-    queryFn: productApi.getAll,
+  const productsQuery = useQuery({
+    queryKey: ["products", queryParams],
+    queryFn: () => productApi.getAll(queryParams),
   });
 
-  const createProductMutation = useMutation({
-    mutationFn: productApi.create,
+  const invalidateProducts = () => queryClient.invalidateQueries({ queryKey: ["products"] });
+
+  const saveMutation = useMutation({
+    mutationFn: (payload) =>
+      editingProduct ? productApi.update(payload) : productApi.create(payload.formData),
     onSuccess: () => {
-      setMutationError("");
+      notify(editingProduct ? "Product updated." : "Product added to the catalog.", "success");
       closeModal();
-      queryClient.invalidateQueries({ queryKey: ["products"] });
+      invalidateProducts();
+      queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
     },
-    onError: (error) =>
-      setMutationError(error.response?.data?.message || "Unable to create product. Please try again."),
+    onError: (error) => notify(getErrorMessage(error, "Unable to save the product."), "error"),
   });
 
-  const updateProductMutation = useMutation({
-    mutationFn: productApi.update,
-    onSuccess: () => {
-      setMutationError("");
-      closeModal();
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-    },
-    onError: (error) =>
-      setMutationError(error.response?.data?.message || "Unable to update product. Please try again."),
-  });
-
-  const deleteProductMutation = useMutation({
+  const deleteMutation = useMutation({
     mutationFn: productApi.delete,
     onSuccess: () => {
-      setMutationError("");
-      queryClient.invalidateQueries({ queryKey: ["products"] });
+      notify("Product deleted.", "success");
+      setProductToDelete(null);
+      invalidateProducts();
+      queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
     },
-    onError: (error) =>
-      setMutationError(error.response?.data?.message || "Unable to delete product. Please try again."),
+    onError: (error) => notify(getErrorMessage(error, "Unable to delete the product."), "error"),
   });
 
-  const closeModal = () => {
-    imagePreviews.forEach((url) => {
-      if (url.startsWith("blob:")) URL.revokeObjectURL(url);
+  const closeModal = useCallback(() => {
+    setPreviews((current) => {
+      current.forEach((preview) => {
+        if (preview.isBlob) URL.revokeObjectURL(preview.url);
+      });
+      return [];
     });
-    setMutationError("");
     setShowModal(false);
     setEditingProduct(null);
-    setFormData({
-      name: "",
-      category: "",
-      price: "",
-      stock: "",
-      description: "",
-    });
-    setImages([]);
-    setImagePreviews([]);
+    setForm(EMPTY_FORM);
+    setRemovedImages([]);
     setImageError("");
-  };
+  }, []);
 
-  const handleEdit = (product) => {
-    setMutationError("");
+  const openCreateModal = () => {
+    setForm(EMPTY_FORM);
+    setPreviews([]);
+    setRemovedImages([]);
     setImageError("");
-    setEditingProduct(product);
-    setFormData({
-      name: product.name,
-      category: product.category,
-      price: product.price.toString(),
-      stock: product.stock.toString(),
-      description: product.description,
-    });
-    setImagePreviews(product.images || []);
+    setEditingProduct(null);
     setShowModal(true);
   };
 
-  const handleImageChange = (e) => {
-    const files = Array.from(e.target.files || []);
-    const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+  const openEditModal = (product) => {
+    setEditingProduct(product);
+    setForm({
+      name: product.name || "",
+      category: product.category || "",
+      price: String(product.price ?? ""),
+      stock: String(product.stock ?? ""),
+      description: product.description || "",
+    });
+    setPreviews((product.images || []).map((url) => ({ url, isBlob: false })));
+    setRemovedImages([]);
+    setImageError("");
+    setShowModal(true);
+  };
 
-    if (files.length > 3) {
-      setImageError("Choose up to 3 images.");
-      e.target.value = "";
+  useEffect(() => {
+    if (!showModal) return undefined;
+    nameInputRef.current?.focus();
+    const onKeyDown = (event) => {
+      if (event.key === "Escape" && !saveMutation.isPending) closeModal();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [showModal, saveMutation.isPending, closeModal]);
+
+  const handleImageChange = (event) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = "";
+    if (!files.length) return;
+
+    const allowed = ["image/jpeg", "image/png", "image/webp"];
+    if (files.some((file) => !allowed.includes(file.type))) {
+      setImageError("Only JPEG, PNG, and WebP images are supported.");
       return;
     }
-
-    if (files.some((file) => !allowedTypes.includes(file.type))) {
-      setImageError("Images must be JPEG, PNG, or WebP files.");
-      e.target.value = "";
-      return;
-    }
-
     if (files.some((file) => file.size > 5 * 1024 * 1024)) {
       setImageError("Each image must be 5 MB or smaller.");
-      e.target.value = "";
+      return;
+    }
+    if (previews.length - removedImages.length + files.length > 3) {
+      setImageError("A product can have at most 3 images.");
       return;
     }
 
-    imagePreviews.forEach((url) => {
-      if (url.startsWith("blob:")) URL.revokeObjectURL(url);
-    });
-
-    setImages(files);
-    setImagePreviews(files.map((file) => URL.createObjectURL(file)));
+    previews.filter((preview) => preview.isBlob).forEach((preview) => URL.revokeObjectURL(preview.url));
+    setPreviews((current) => [
+      ...current.filter((preview) => !preview.isBlob),
+      ...files.map((file) => ({ url: URL.createObjectURL(file), isBlob: true, file })),
+    ]);
     setImageError("");
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setMutationError("");
+  const removePreview = (index) => {
+    const preview = previews[index];
+    if (preview.isBlob) URL.revokeObjectURL(preview.url);
+    else setRemovedImages((current) => [...current, preview.url]);
+    setPreviews((current) => current.filter((_, i) => i !== index));
+  };
 
-    if (!editingProduct && imagePreviews.length === 0) {
-      setImageError("Upload at least one product image.");
+  const handleSubmit = (event) => {
+    event.preventDefault();
+    if (!editingProduct && previews.length === 0) {
+      setImageError("Add at least one product image.");
       return;
     }
 
-    const formDataToSend = new FormData();
-    formDataToSend.append("name", formData.name);
-    formDataToSend.append("description", formData.description);
-    formDataToSend.append("price", formData.price);
-    formDataToSend.append("stock", formData.stock);
-    formDataToSend.append("category", formData.category);
-
-    // only append new images if they were selected
-    if (images.length > 0) images.forEach((image) => formDataToSend.append("images", image));
+    const formData = new FormData();
+    Object.entries(form).forEach(([key, value]) => formData.append(key, value.trim()));
+    previews.filter((preview) => preview.file).forEach((preview) => formData.append("images", preview.file));
 
     if (editingProduct) {
-      updateProductMutation.mutate({ id: editingProduct._id, formData: formDataToSend });
+      formData.append("removedImages", JSON.stringify(removedImages));
+      saveMutation.mutate({ id: editingProduct._id, formData });
     } else {
-      createProductMutation.mutate(formDataToSend);
+      saveMutation.mutate({ formData });
     }
   };
 
+  const { products = [], total = 0, pages = 1 } = productsQuery.data || {};
+
   return (
     <div className="space-y-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Products</h1>
-          <p className="mt-1 text-base-content/70">Manage your product catalog and inventory.</p>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Products</h1>
+          <p className="muted mt-1 text-sm">Manage your catalog, pricing and inventory.</p>
         </div>
-        <button
-          onClick={() => {
-            setMutationError("");
-            setImageError("");
-            setShowModal(true);
-          }}
-          className="btn btn-primary gap-2"
-        >
-          <PlusIcon className="w-5 h-5" />
-          Add Product
+        <button type="button" className="btn btn-primary" onClick={openCreateModal}>
+          <PackagePlusIcon className="size-5" />
+          Add product
         </button>
       </header>
 
-      {mutationError && (
-        <div role="alert" className="alert alert-error">
-          <span>{mutationError}</span>
-          <button className="btn btn-sm btn-ghost" onClick={() => setMutationError("")}>
-            Dismiss
-          </button>
-        </div>
-      )}
+      <section className="surface flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+        <label className="input input-bordered flex flex-1 items-center gap-2">
+          <SearchIcon className="size-4 text-base-content/50" aria-hidden="true" />
+          <span className="sr-only">Search products</span>
+          <input
+            type="search"
+            value={search}
+            onChange={(event) => {
+              setSearch(event.target.value);
+              setPage(1);
+            }}
+            placeholder="Search by name, category or description…"
+          />
+        </label>
+        <select
+          className="select select-bordered w-full sm:w-52"
+          value={category}
+          onChange={(event) => {
+            setCategory(event.target.value);
+            setPage(1);
+          }}
+          aria-label="Filter by category"
+        >
+          <option value="">All categories</option>
+          {CATEGORIES.map((item) => (
+            <option key={item} value={item}>
+              {item}
+            </option>
+          ))}
+        </select>
+        <span className="text-sm text-base-content/70">{total} product(s)</span>
+      </section>
 
-      {isLoading ? (
-        <div className="flex min-h-64 items-center justify-center">
-          <span className="loading loading-spinner loading-lg text-primary" />
-          <span className="ml-3 text-base-content/70">Loading products...</span>
+      {productsQuery.isLoading ? (
+        <div className="surface">
+          <LoadingState label="Loading products…" />
         </div>
-      ) : isError ? (
-        <div role="alert" className="alert alert-error">
-          <span>Products could not be loaded.</span>
-          <button className="btn btn-sm" onClick={() => refetch()}>
-            Try again
-          </button>
+      ) : productsQuery.isError ? (
+        <div className="surface">
+          <ErrorState
+            message={getErrorMessage(productsQuery.error, "Unable to load the catalog.")}
+            onRetry={productsQuery.refetch}
+          />
         </div>
       ) : products.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-base-300 bg-base-100 px-6 py-16 text-center">
-          <ImageIcon className="mx-auto mb-3 h-10 w-10 text-base-content/40" />
-          <h2 className="text-lg font-semibold">Your catalog is empty</h2>
-          <p className="mt-1 text-sm text-base-content/70">
-            Add a product and its images to start building your catalog.
-          </p>
+        <div className="surface">
+          <EmptyState
+            icon={ImageIcon}
+            title="No products found"
+            description={search || category ? "Try adjusting your search or filter." : "Add your first product to start selling."}
+            action={
+              !search && !category ? (
+                <button type="button" className="btn btn-primary btn-sm" onClick={openCreateModal}>
+                  Add product
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => {
+                    setSearch("");
+                    setCategory("");
+                  }}
+                >
+                  Clear filters
+                </button>
+              )
+            }
+          />
         </div>
       ) : (
-        <div className="grid gap-5 sm:grid-cols-2 2xl:grid-cols-3">
+        <section className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {products.map((product) => {
-            const status = getStockStatusBadge(product.stock);
-
+            const stock = getStockStatusBadge(product.stock);
             return (
-              <article
-                key={product._id}
-                className="card overflow-hidden border border-base-300 bg-base-100 shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
-              >
-                <figure className="relative aspect-[4/3] bg-base-200">
-                  {product.images?.[0] ? (
-                    <img
-                      src={product.images[0]}
-                      alt={product.name}
-                      loading="lazy"
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-base-content/40">
-                      <ImageIcon className="h-10 w-10" />
-                    </div>
-                  )}
-                  <span className={`badge absolute right-3 top-3 ${status.class}`}>
-                    {status.text}
-                  </span>
+              <article key={product._id} className="surface overflow-hidden transition hover:shadow-md">
+                <figure className="aspect-[4/3] overflow-hidden bg-base-200">
+                  <ImageWithFallback
+                    src={product.images?.[0]}
+                    alt={product.name}
+                    className="size-full object-cover"
+                  />
                 </figure>
-
-                <div className="card-body gap-4 p-5">
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-base-content/60">
-                      {product.category}
-                    </p>
-                    <h2 className="card-title mt-1 line-clamp-2 min-h-14 text-lg">
-                      {product.name}
-                    </h2>
-                  </div>
-
-                  <div className="flex items-end justify-between border-t border-base-200 pt-4">
-                    <div>
-                      <p className="text-xs text-base-content/60">Price</p>
-                      <p className="text-xl font-bold">
-                        ${Number(product.price).toFixed(2)}
+                <div className="space-y-3 p-5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-base-content/60">
+                        {product.category}
                       </p>
+                      <h2 className="mt-1 line-clamp-2 font-semibold">{product.name}</h2>
+                    </div>
+                    <span className={`badge badge-sm ${stock.class}`}>{stock.text}</span>
+                  </div>
+                  <p className="line-clamp-2 min-h-10 text-sm muted">{product.description}</p>
+                  <div className="flex items-end justify-between border-t border-base-200 pt-3">
+                    <div>
+                      <p className="text-xs muted">Price</p>
+                      <p className="text-lg font-bold tabular-nums">{formatCurrency(product.price)}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-xs text-base-content/60">Inventory</p>
-                      <p className="font-semibold">{product.stock} units</p>
+                      <p className="text-xs muted">Stock</p>
+                      <p className="font-semibold tabular-nums">{product.stock} units</p>
                     </div>
                   </div>
-
-                  <div className="card-actions justify-end border-t border-base-200 pt-3">
+                  <div className="flex justify-end gap-1 border-t border-base-200 pt-2">
                     <button
-                      className="btn btn-square btn-ghost"
-                      onClick={() => handleEdit(product)}
+                      type="button"
+                      className="btn btn-ghost btn-sm"
+                      onClick={() => openEditModal(product)}
                       aria-label={`Edit ${product.name}`}
-                      title="Edit product"
                     >
-                      <PencilIcon className="h-5 w-5" />
+                      <PencilIcon className="size-4" /> Edit
                     </button>
                     <button
-                      className="btn btn-square btn-ghost text-error"
-                      onClick={() => {
-                        if (window.confirm(`Delete "${product.name}" from the catalog?`)) {
-                          setMutationError("");
-                          deleteProductMutation.mutate(product._id);
-                        }
-                      }}
-                      disabled={deleteProductMutation.isPending}
+                      type="button"
+                      className="btn btn-ghost btn-sm text-error"
+                      onClick={() => setProductToDelete(product)}
                       aria-label={`Delete ${product.name}`}
-                      title="Delete product"
                     >
-                      {deleteProductMutation.isPending ? (
-                        <span className="loading loading-spinner" />
-                      ) : (
-                        <Trash2Icon className="h-5 w-5" />
-                      )}
+                      <Trash2Icon className="size-4" /> Delete
                     </button>
                   </div>
                 </div>
               </article>
             );
           })}
+        </section>
+      )}
+
+      {pages > 1 && (
+        <div className="flex items-center justify-center gap-3">
+          <button
+            type="button"
+            className="btn btn-sm"
+            disabled={page <= 1}
+            onClick={() => setPage((current) => current - 1)}
+          >
+            Previous
+          </button>
+          <span className="text-sm muted">
+            Page {page} of {pages}
+          </span>
+          <button
+            type="button"
+            className="btn btn-sm"
+            disabled={page >= pages}
+            onClick={() => setPage((current) => current + 1)}
+          >
+            Next
+          </button>
         </div>
       )}
 
-      {/* ADD/EDIT PRODUCT MODAL */}
-
-      <input type="checkbox" className="modal-toggle" checked={showModal} readOnly />
-
-      <div className="modal">
-        <div className="modal-box max-h-[90vh] w-11/12 max-w-2xl overflow-y-auto">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-2xl">
-              {editingProduct ? "Edit Product" : "Add New Product"}
-            </h3>
-
-            <button onClick={closeModal} className="btn btn-sm btn-circle btn-ghost">
-              <XIcon className="w-5 h-5" />
-            </button>
-          </div>
-
-          {showModal && mutationError && (
-            <div role="alert" className="alert alert-error mb-4">
-              <span>{mutationError}</span>
+      {showModal && (
+        <div className="modal modal-open">
+          <div
+            className="modal-box max-h-[90vh] w-11/12 max-w-2xl overflow-y-auto"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="product-modal-title"
+          >
+            <div className="mb-5 flex items-center justify-between">
+              <h2 id="product-modal-title" className="text-xl font-bold">
+                {editingProduct ? "Edit product" : "Add a new product"}
+              </h2>
+              <button
+                type="button"
+                className="btn btn-circle btn-ghost btn-sm"
+                onClick={closeModal}
+                aria-label="Close product form"
+              >
+                <XIcon className="size-5" />
+              </button>
             </div>
-          )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="form-control">
+                  <label className="label" htmlFor="product-name">
+                    <span className="label-text font-medium">Product name</span>
+                  </label>
+                  <input
+                    id="product-name"
+                    ref={nameInputRef}
+                    className="input input-bordered w-full"
+                    value={form.name}
+                    onChange={(event) => setForm({ ...form, name: event.target.value })}
+                    maxLength={120}
+                    required
+                  />
+                </div>
+                <div className="form-control">
+                  <label className="label" htmlFor="product-category">
+                    <span className="label-text font-medium">Category</span>
+                  </label>
+                  <select
+                    id="product-category"
+                    className="select select-bordered w-full"
+                    value={form.category}
+                    onChange={(event) => setForm({ ...form, category: event.target.value })}
+                    required
+                  >
+                    <option value="">Select a category</option>
+                    {CATEGORIES.map((item) => (
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="form-control">
+                  <label className="label" htmlFor="product-price">
+                    <span className="label-text font-medium">Price (USD)</span>
+                  </label>
+                  <input
+                    id="product-price"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    className="input input-bordered w-full"
+                    value={form.price}
+                    onChange={(event) => setForm({ ...form, price: event.target.value })}
+                    required
+                  />
+                </div>
+                <div className="form-control">
+                  <label className="label" htmlFor="product-stock">
+                    <span className="label-text font-medium">Stock</span>
+                  </label>
+                  <input
+                    id="product-stock"
+                    type="number"
+                    min="0"
+                    step="1"
+                    className="input input-bordered w-full"
+                    value={form.stock}
+                    onChange={(event) => setForm({ ...form, stock: event.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+
               <div className="form-control">
-                <label className="label">
-                  <span>Product Name</span>
+                <label className="label" htmlFor="product-description">
+                  <span className="label-text font-medium">Description</span>
                 </label>
-
-                <input
-                  type="text"
-                  placeholder="Enter product name"
-                  className="input input-bordered"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                <textarea
+                  id="product-description"
+                  className="textarea textarea-bordered h-24 w-full"
+                  value={form.description}
+                  onChange={(event) => setForm({ ...form, description: event.target.value })}
+                  maxLength={1000}
                   required
                 />
               </div>
 
               <div className="form-control">
-                <label className="label">
-                  <span>Category</span>
-                </label>
-                <select
-                  className="select select-bordered"
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  required
-                >
-                  <option value="">Select category</option>
-                  <option value="Electronics">Electronics</option>
-                  <option value="Accessories">Accessories</option>
-                  <option value="Fashion">Fashion</option>
-                  <option value="Sports">Sports</option>
-                  <option value="Books">Books</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="form-control">
-                <label className="label">
-                  <span>Price ($)</span>
+                <label className="label" htmlFor="product-images">
+                  <span className="label-text font-medium">Images</span>
+                  <span className="label-text-alt">JPEG, PNG or WebP · up to 3 · 5 MB each</span>
                 </label>
                 <input
-                  type="number"
-                  step="0.01"
-                  min="0.01"
-                  placeholder="0.00"
-                  className="input input-bordered"
-                  value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-                  required
-                />
-              </div>
-
-              <div className="form-control">
-                <label className="label">
-                  <span>Stock</span>
-                </label>
-                <input
-                  type="number"
-                  min="0"
-                  step="1"
-                  placeholder="0"
-                  className="input input-bordered"
-                  value={formData.stock}
-                  onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="form-control flex flex-col gap-2">
-              <label className="label">
-                <span>Description</span>
-              </label>
-              <textarea
-                className="textarea textarea-bordered h-24 w-full"
-                placeholder="Enter product description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                required
-              />
-            </div>
-
-            <div className="form-control">
-              <label className="label">
-                <span className="label-text font-semibold text-base flex items-center gap-2">
-                  <ImageIcon className="h-5 w-5" />
-                  Product Images
-                </span>
-                <span className="label-text-alt text-xs opacity-60">Up to 3 images, 5 MB each</span>
-              </label>
-
-              <div className="bg-base-200 rounded-xl p-4 border-2 border-dashed border-base-300 hover:border-primary transition-colors">
-                <input
+                  id="product-images"
                   type="file"
+                  className="file-input file-input-bordered w-full"
                   accept="image/jpeg,image/png,image/webp"
                   multiple
                   onChange={handleImageChange}
-                  className="file-input file-input-bordered file-input-primary w-full"
                 />
-
-                <p className="mt-2 text-center text-xs text-base-content/60">
-                  JPEG, PNG, or WebP. {editingProduct && "Leave empty to keep current images."}
-                </p>
+                {imageError && (
+                  <p role="alert" className="mt-2 text-sm text-error">
+                    {imageError}
+                  </p>
+                )}
+                {previews.length > 0 && (
+                  <div className="mt-3 grid grid-cols-3 gap-3">
+                    {previews.map((preview, index) => (
+                      <div key={`${preview.url}-${index}`} className="relative aspect-square">
+                        <img
+                          src={preview.url}
+                          alt={`Product preview ${index + 1}`}
+                          className="size-full rounded-xl object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removePreview(index)}
+                          className="btn btn-circle btn-error btn-xs absolute -right-2 -top-2"
+                          aria-label={`Remove image ${index + 1}`}
+                        >
+                          <XIcon className="size-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {imageError && (
-                <p className="mt-2 text-sm text-error" role="alert">
-                  {imageError}
-                </p>
-              )}
-
-              {imagePreviews.length > 0 && (
-                <div className="mt-3 grid grid-cols-3 gap-3">
-                  {imagePreviews.map((preview, index) => (
-                    <figure
-                      key={`${preview}-${index}`}
-                      className="aspect-square overflow-hidden rounded-xl border border-base-300 bg-base-200"
-                    >
-                      <img
-                        src={preview}
-                        alt={`Product image preview ${index + 1}`}
-                        className="h-full w-full object-cover"
-                      />
-                    </figure>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="modal-action">
-              <button
-                type="button"
-                onClick={closeModal}
-                className="btn"
-                disabled={createProductMutation.isPending || updateProductMutation.isPending}
-              >
-                Cancel
-              </button>
-
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={createProductMutation.isPending || updateProductMutation.isPending}
-              >
-                {createProductMutation.isPending || updateProductMutation.isPending ? (
-                  <span className="loading loading-spinner"></span>
-                ) : editingProduct ? (
-                  "Update Product"
-                ) : (
-                  "Add Product"
-                )}
-              </button>
-            </div>
-          </form>
+              <div className="modal-action">
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={closeModal}
+                  disabled={saveMutation.isPending}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={saveMutation.isPending}>
+                  {saveMutation.isPending && <span className="loading loading-spinner loading-xs" />}
+                  {editingProduct ? "Save changes" : "Add product"}
+                </button>
+              </div>
+            </form>
+          </div>
+          <button type="button" className="modal-backdrop" onClick={closeModal} aria-label="Close dialog" />
         </div>
-      </div>
+      )}
+
+      <ConfirmDialog
+        open={Boolean(productToDelete)}
+        title="Delete product?"
+        description={`“${productToDelete?.name || ""}” will be removed from the catalog and its images deleted.`}
+        confirmLabel="Delete"
+        tone="error"
+        busy={deleteMutation.isPending}
+        onConfirm={() => deleteMutation.mutate(productToDelete._id)}
+        onCancel={() => setProductToDelete(null)}
+      />
     </div>
   );
 }

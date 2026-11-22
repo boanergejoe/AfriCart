@@ -137,16 +137,16 @@ async function updateOrderFromTransaction(orderId, trackingId, transaction) {
 export async function createPesapalCheckout(req, res) {
   const address = readAddress(req.body?.shippingAddress);
   if (!address) {
-    return res.status(400).json({ error: "Select a complete shipping address before checkout." });
+    return res.status(400).json({ message: "Select a complete shipping address before checkout." });
   }
   const phoneNumber = address.phoneNumber.replace(/[^\d+]/g, "");
   if (!/^\+?\d{7,15}$/.test(phoneNumber)) {
-    return res.status(400).json({ error: "Enter a valid phone number in your shipping address." });
+    return res.status(400).json({ message: "Enter a valid phone number in your shipping address." });
   }
 
   const expectedTotalCents = Number(req.body?.expectedTotalCents);
   if (!Number.isSafeInteger(expectedTotalCents) || expectedTotalCents <= 0) {
-    return res.status(400).json({ error: "The cart total is invalid. Refresh your cart and try again." });
+    return res.status(400).json({ message: "The cart total is invalid. Refresh your cart and try again." });
   }
 
   let settings;
@@ -154,7 +154,7 @@ export async function createPesapalCheckout(req, res) {
     settings = getPesapalCheckoutSettings();
   } catch (error) {
     if (error instanceof PesapalConfigurationError) {
-      return res.status(503).json({ error: error.message });
+      return res.status(503).json({ message: error.message });
     }
     throw error;
   }
@@ -162,28 +162,28 @@ export async function createPesapalCheckout(req, res) {
   try {
     const user = await User.findById(req.user._id);
     if (!user?.email) {
-      return res.status(400).json({ error: "An email address is required for PesaPal checkout." });
+      return res.status(400).json({ message: "An email address is required for PesaPal checkout." });
     }
 
     const cart = await Cart.findOne({ clerkId: user.clerkId }).populate("items.product");
     if (!cart?.items?.length) {
-      return res.status(400).json({ error: "Your cart is empty." });
+      return res.status(400).json({ message: "Your cart is empty." });
     }
 
     const orderItems = [];
     for (const cartItem of cart.items) {
       const product = cartItem.product;
       if (!product) {
-        return res.status(409).json({ error: "A product in your cart is no longer available." });
+        return res.status(409).json({ message: "A product in your cart is no longer available." });
       }
       if (!product.images?.[0]) {
-        return res.status(409).json({ error: `${product.name} is not available for checkout right now.` });
+        return res.status(409).json({ message: `${product.name} is not available for checkout right now.` });
       }
       if (!Number.isInteger(cartItem.quantity) || cartItem.quantity < 1) {
-        return res.status(400).json({ error: "Your cart contains an invalid quantity." });
+        return res.status(400).json({ message: "Your cart contains an invalid quantity." });
       }
       if (product.stock < cartItem.quantity) {
-        return res.status(409).json({ error: `Insufficient stock for ${product.name}.` });
+        return res.status(409).json({ message: `Insufficient stock for ${product.name}.` });
       }
 
       orderItems.push({
@@ -327,11 +327,11 @@ export async function createPesapalCheckout(req, res) {
         { $set: { "paymentResult.status": "failed" } }
       );
       console.error("PesaPal checkout creation failed:", error.message);
-      return res.status(502).json({ error: "PesaPal could not start the payment. Please try again." });
+      return res.status(502).json({ message: "PesaPal could not start the payment. Please try again." });
     }
   } catch (error) {
     console.error("Error creating PesaPal checkout:", error);
-    return res.status(500).json({ error: "Unable to prepare PesaPal checkout." });
+    return res.status(500).json({ message: "Unable to prepare PesaPal checkout." });
   }
 }
 
@@ -344,14 +344,14 @@ export async function getPesapalPaymentStatus(req, res) {
       "paymentResult.provider": "pesapal",
     });
 
-    if (!order) return res.status(404).json({ error: "Payment order not found." });
+    if (!order) return res.status(404).json({ message: "Payment order not found." });
 
     const requestedTrackingId = req.query.orderTrackingId;
     if (
       requestedTrackingId &&
       String(requestedTrackingId) !== String(order.paymentResult.orderTrackingId || "")
     ) {
-      return res.status(400).json({ error: "PesaPal tracking ID does not match this order." });
+      return res.status(400).json({ message: "PesaPal tracking ID does not match this order." });
     }
 
     if (order.paymentResult.orderTrackingId) {
@@ -381,14 +381,16 @@ export async function getPesapalPaymentStatus(req, res) {
   } catch (error) {
     console.error("Error checking PesaPal payment status:", error.message);
     const statusCode = error instanceof PesapalConfigurationError ? 503 : 502;
-    return res.status(statusCode).json({ error: "Unable to verify payment status with PesaPal." });
+    return res.status(statusCode).json({ message: "Unable to verify payment status with PesaPal." });
   }
 }
 
 export async function handlePesapalIPN(req, res) {
   const notification = readNotification(req);
-  const response = (status) =>
-    res.status(200).json({
+
+  // PesaPal retries non-2xx responses, so transient failures must not be reported as 200.
+  const respond = (httpStatus, status) =>
+    res.status(httpStatus).json({
       orderNotificationType: notification.type || "IPNCHANGE",
       orderTrackingId: notification.trackingId,
       orderMerchantReference: notification.merchantReference,
@@ -400,7 +402,7 @@ export async function handlePesapalIPN(req, res) {
     !notification.trackingId ||
     !notification.merchantReference
   ) {
-    return response(500);
+    return respond(400, 500);
   }
 
   try {
@@ -408,19 +410,19 @@ export async function handlePesapalIPN(req, res) {
       "paymentResult.id": notification.merchantReference,
       "paymentResult.provider": "pesapal",
     });
-    if (!order) return response(500);
+    if (!order) return respond(404, 500);
 
     const savedTrackingId = order.paymentResult.orderTrackingId;
     if (savedTrackingId && savedTrackingId !== notification.trackingId) {
-      return response(500);
+      return respond(400, 500);
     }
 
     const transaction = await getPesapalTransactionStatus(notification.trackingId);
     await updateOrderFromTransaction(order._id, notification.trackingId, transaction);
-    return response(200);
+    return respond(200, 200);
   } catch (error) {
     console.error("PesaPal IPN processing failed:", error.message);
-    return response(500);
+    return respond(503, 500);
   }
 }
 

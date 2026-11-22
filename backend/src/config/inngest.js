@@ -50,6 +50,35 @@ const syncUser = inngest.createFunction(
   }
 );
 
+const syncUserUpdates = inngest.createFunction(
+  { id: "sync-user-updates" },
+  { event: "clerk/user.updated" },
+  async ({ event }) => {
+    await connectDB();
+
+    const { id, email_addresses, primary_email_address_id, first_name, last_name, image_url } =
+      event.data;
+    const emailAddresses = email_addresses || [];
+    const primaryEmail =
+      emailAddresses.find((email) => email.id === primary_email_address_id) || emailAddresses[0];
+
+    if (!primaryEmail?.email_address) return;
+
+    await User.findOneAndUpdate(
+      { clerkId: id },
+      {
+        $set: {
+          email: primaryEmail.email_address,
+          name:
+            [first_name, last_name].filter(Boolean).join(" ").trim() || primaryEmail.email_address,
+          imageUrl: image_url || "",
+        },
+      },
+      { runValidators: true }
+    );
+  }
+);
+
 const deleteUserFromDB = inngest.createFunction(
   { id: "delete-user-from-db" },
   { event: "clerk/user.deleted" },
@@ -61,4 +90,4 @@ const deleteUserFromDB = inngest.createFunction(
   }
 );
 
-export const functions = [syncUser, deleteUserFromDB];
+export const functions = [syncUser, syncUserUpdates, deleteUserFromDB];

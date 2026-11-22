@@ -1,74 +1,65 @@
-import { Stack } from "expo-router";
+import { useEffect, type ReactNode } from "react";
+import { Stack, useRouter, useSegments } from "expo-router";
 import Head from "expo-router/head";
-import "../global.css";
-import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ClerkProvider } from "@clerk/clerk-expo";
+import { ClerkProvider, useAuth } from "@clerk/clerk-expo";
 import { tokenCache } from "@clerk/clerk-expo/token-cache";
+import { QueryClientProvider } from "@tanstack/react-query";
 import * as Sentry from "@sentry/react-native";
 
-Sentry.init({
-  dsn: "https://fb6731b90610cc08333e6c16ffac5724@o4509813037137920.ingest.de.sentry.io/4510451611205712",
+import AppErrorBoundary from "@/components/AppErrorBoundary";
+import AuthBridge from "@/components/AuthBridge";
+import BrandLoader from "@/components/BrandLoader";
+import { queryClient } from "@/lib/queryClient";
+import palette from "@/lib/theme";
+import "../global.css";
 
-  // Adds more context data to events (IP address, cookies, user, etc.)
-  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
-  sendDefaultPii: true,
+const sentryDsn = process.env.EXPO_PUBLIC_SENTRY_DSN;
+if (sentryDsn) {
+  Sentry.init({
+    dsn: sentryDsn,
+    sendDefaultPii: false,
+    enableLogs: false,
+    tracesSampleRate: 0.1,
+    replaysSessionSampleRate: 0,
+    replaysOnErrorSampleRate: 0.1,
+    integrations: [Sentry.mobileReplayIntegration()],
+  });
+}
 
-  // Enable Logs
-  enableLogs: true,
+function AuthGuard({ children }: { children: ReactNode }) {
+  const { isLoaded, isSignedIn } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
 
-  // Configure Session Replay
-  replaysSessionSampleRate: 1.0,
-  replaysOnErrorSampleRate: 1,
-  integrations: [Sentry.mobileReplayIntegration()],
+  useEffect(() => {
+    if (!isLoaded) return;
 
-  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
-  // spotlight: __DEV__,
-});
+    const inAuthGroup = segments[0] === "(auth)";
+    if (!isSignedIn && !inAuthGroup) router.replace("/(auth)");
+    else if (isSignedIn && inAuthGroup) router.replace("/(tabs)");
+  }, [isLoaded, isSignedIn, segments, router]);
 
-const queryClient = new QueryClient({
-  queryCache: new QueryCache({
-    onError: (error: any, query) => {
-      Sentry.captureException(error, {
-        tags: {
-          type: "react-query-error",
-          queryKey: query.queryKey[0]?.toString() || "unknon",
-        },
-        extra: {
-          errorMessage: error.message,
-          statusCode: error.response?.status,
-          queryKey: query.queryKey,
-        },
-      });
-    },
-  }),
-  mutationCache: new MutationCache({
-    onError: (error: any) => {
-      // global error handler for all mutations
-      Sentry.captureException(error, {
-        tags: { type: "react-query-mutation-error" },
-        extra: {
-          errorMessage: error.message,
-          statusCode: error.response?.status,
-        },
-      });
-    },
-  }),
-});
+  if (!isLoaded) return <BrandLoader />;
+  return children;
+}
 
 export default Sentry.wrap(function RootLayout() {
   return (
-    <ClerkProvider
-      publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY}
-      tokenCache={tokenCache}
-    >
-      <Head>
-        <title>AfriCart</title>
-        <meta name="description" content="Shop quality products with AfriCart." />
-        <meta name="theme-color" content="#0B6B4A" />
-      </Head>
-      <QueryClientProvider client={queryClient}>
-        <Stack screenOptions={{ headerShown: false }} />
-      </QueryClientProvider>
-    </ClerkProvider>
+    <AppErrorBoundary>
+      <ClerkProvider publishableKey={process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY} tokenCache={tokenCache}>
+        <AuthBridge>
+          <QueryClientProvider client={queryClient}>
+            <AuthGuard>
+              <Head>
+                <title>AfriCart</title>
+                <meta name="description" content="Shop quality products with AfriCart." />
+                <meta name="theme-color" content={palette.brand.DEFAULT} />
+              </Head>
+              <Stack screenOptions={{ headerShown: false }} />
+            </AuthGuard>
+          </QueryClientProvider>
+        </AuthBridge>
+      </ClerkProvider>
+    </AppErrorBoundary>
   );
 });

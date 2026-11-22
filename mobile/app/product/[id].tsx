@@ -1,56 +1,91 @@
-import SafeScreen from "@/components/SafeScreen";
-import useCart from "@/hooks/useCart";
-import { useProduct } from "@/hooks/useProduct";
-import useWishlist from "@/hooks/useWishlist";
+import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
 import {
-  View,
-  Text,
-  Alert,
   ActivityIndicator,
-  TouchableOpacity,
+  Alert,
+  Platform,
   ScrollView,
-  useWindowDimensions,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 
+import { ErrorState } from "@/components/ErrorState";
+import LoadingState from "@/components/LoadingState";
+import SafeScreen from "@/components/SafeScreen";
+import { useBreakpoints } from "@/hooks/useBreakpoints";
+import useCart from "@/hooks/useCart";
+import { useProduct } from "@/hooks/useProduct";
+import useWishlist from "@/hooks/useWishlist";
+import palette from "@/lib/theme";
+import { getErrorMessage } from "@/lib/utils";
+
+const showMessage = (title: string, message: string) => {
+  if (Platform.OS === "web" && typeof window !== "undefined") {
+    window.alert(`${title}\n\n${message}`);
+    return;
+  }
+  Alert.alert(title, message);
+};
+
 const ProductDetailScreen = () => {
-  const { width } = useWindowDimensions();
-  const galleryWidth = Math.min(width, 960);
+  const { width } = useBreakpoints();
+  const galleryWidth = Math.min(width, palette.layout.detailContent);
   const galleryHeight = Math.min(galleryWidth * 0.95, 460);
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { data: product, isError, isLoading } = useProduct(id);
-  const { addToCart, isAddingToCart } = useCart();
-
-  const { isInWishlist, toggleWishlist, isAddingToWishlist, isRemovingFromWishlist } =
-    useWishlist();
+  const { data: product, isError, isLoading, refetch } = useProduct(id);
+  const { addToCart, isProductPending: isCartItemPending } = useCart();
+  const {
+    isInWishlist,
+    toggleWishlist,
+    isProductPending: isWishlistItemPending,
+  } = useWishlist();
 
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
 
+  if (isLoading) {
+    return (
+      <SafeScreen>
+        <LoadingState message="Loading product…" />
+      </SafeScreen>
+    );
+  }
+
+  if (isError || !product) {
+    return (
+      <SafeScreen>
+        <ErrorState
+          title="Product unavailable"
+          description="This product may have been removed or does not exist."
+          onRetry={() => void refetch()}
+        />
+      </SafeScreen>
+    );
+  }
+
+  const inStock = product.stock > 0;
+  const images = product.images || [];
+  const isWishlisted = isInWishlist(product._id);
+  const wishlistPending = isWishlistItemPending(product._id);
+  const cartPending = isCartItemPending(product._id);
+
   const handleAddToCart = () => {
     if (!product) return;
+
     addToCart(
       { productId: product._id, quantity },
       {
-        onSuccess: () => Alert.alert("Success", `${product.name} added to cart!`),
-        onError: (error: any) => {
-          Alert.alert("Error", error?.response?.data?.error || "Failed to add to cart");
-        },
+        onSuccess: () => showMessage("Added to cart", `${product.name} is in your cart.`),
+        onError: (error: unknown) => showMessage("Could not add to cart", getErrorMessage(error)),
       }
     );
   };
 
-  if (isLoading) return <LoadingUI />;
-  if (isError || !product) return <ErrorUI />;
-
-  const inStock = product.stock > 0;
-
   return (
     <SafeScreen>
-      {/* HEADER */}
       <View className="absolute top-0 left-0 right-0 z-10 px-6 pt-20 pb-4 flex-row items-center justify-between">
         <TouchableOpacity
           className="bg-black/50 backdrop-blur-xl w-12 h-12 rounded-full items-center justify-center"
@@ -59,28 +94,34 @@ const ProductDetailScreen = () => {
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+          <Ionicons name="arrow-back" size={24} color={palette.text.primary} />
         </TouchableOpacity>
 
         <TouchableOpacity
           className={`w-12 h-12 rounded-full items-center justify-center ${
-            isInWishlist(product._id) ? "bg-primary" : "bg-black/50 backdrop-blur-xl"
+            isWishlisted ? "bg-primary" : "bg-black/50 backdrop-blur-xl"
           }`}
-          onPress={() => toggleWishlist(product._id)}
-          disabled={isAddingToWishlist || isRemovingFromWishlist}
+          onPress={() =>
+            toggleWishlist(product._id, {
+              onError: (error: unknown) =>
+                showMessage("Wishlist update failed", getErrorMessage(error)),
+            })
+          }
+          disabled={wishlistPending}
           activeOpacity={0.7}
           accessibilityRole="button"
-          accessibilityLabel={`${isInWishlist(product._id) ? "Remove" : "Add"} ${
-            product.name
-          } ${isInWishlist(product._id) ? "from" : "to"} wishlist`}
+          accessibilityState={{ selected: isWishlisted, disabled: wishlistPending }}
+          accessibilityLabel={`${isWishlisted ? "Remove" : "Add"} ${product.name} ${
+            isWishlisted ? "from" : "to"
+          } wishlist`}
         >
-          {isAddingToWishlist || isRemovingFromWishlist ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
+          {wishlistPending ? (
+            <ActivityIndicator size="small" color={palette.text.primary} />
           ) : (
             <Ionicons
-              name={isInWishlist(product._id) ? "heart" : "heart-outline"}
+              name={isWishlisted ? "heart" : "heart-outline"}
               size={24}
-              color={isInWishlist(product._id) ? "#121212" : "#FFFFFF"}
+              color={isWishlisted ? palette.onPrimary : palette.text.primary}
             />
           )}
         </TouchableOpacity>
@@ -91,31 +132,23 @@ const ProductDetailScreen = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100 }}
       >
-        {/* IMAGE GALLERY */}
-        <View
-          className="relative"
-          style={{ width: "100%", maxWidth: 960, alignSelf: "center" }}
-        >
+        <View style={{ width: "100%", maxWidth: palette.layout.detailContent, alignSelf: "center" }}>
           <ScrollView
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
             scrollEventThrottle={16}
-            onScroll={(e) => {
-              const index = Math.round(e.nativeEvent.contentOffset.x / galleryWidth);
-              setSelectedImageIndex(index);
+            onScroll={(event) => {
+              const index = Math.round(event.nativeEvent.contentOffset.x / galleryWidth);
+              setSelectedImageIndex(Math.max(0, Math.min(index, images.length - 1)));
             }}
           >
-            {product.images?.length ? (
-              product.images.map((image: string, index: number) => (
+            {images.length > 0 ? (
+              images.map((image, index) => (
                 <View key={`${image}-${index}`} style={{ width: galleryWidth }}>
                   <Image
-                    source={image}
-                    style={{
-                      width: galleryWidth,
-                      height: galleryHeight,
-                      backgroundColor: "#181818",
-                    }}
+                    source={{ uri: image }}
+                    style={{ width: galleryWidth, height: galleryHeight, backgroundColor: palette.background.light }}
                     contentFit="contain"
                     transition={180}
                     accessibilityLabel={`${product.name}, image ${index + 1}`}
@@ -127,20 +160,19 @@ const ProductDetailScreen = () => {
                 style={{
                   width: galleryWidth,
                   height: galleryHeight,
-                  backgroundColor: "#181818",
+                  backgroundColor: palette.background.light,
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                <Ionicons name="image-outline" size={48} color="#6A6A6A" />
+                <Ionicons name="image-outline" size={48} color={palette.text.tertiary} />
               </View>
             )}
           </ScrollView>
 
-          {/* Image Indicators */}
-          {product.images?.length > 1 && (
+          {images.length > 1 && (
             <View className="absolute bottom-4 left-0 right-0 flex-row justify-center gap-2">
-              {product.images.map((_: string, index: number) => (
+              {images.map((_, index) => (
                 <View
                   key={index}
                   className={`h-2 rounded-full ${
@@ -152,104 +184,100 @@ const ProductDetailScreen = () => {
           )}
         </View>
 
-        {/* PRODUCT INFO */}
-        <View style={{ width: "100%", maxWidth: 960, alignSelf: "center" }}>
-        <View className="p-6">
-          {/* Category */}
+        <View className="p-6" style={{ width: "100%", maxWidth: palette.layout.detailContent, alignSelf: "center" }}>
           <View className="flex-row items-center mb-3">
             <View className="bg-primary/20 px-3 py-1 rounded-full">
               <Text className="text-primary text-xs font-bold">{product.category}</Text>
             </View>
           </View>
 
-          {/* Product Name */}
           <Text className="text-text-primary text-3xl font-bold mb-3">{product.name}</Text>
 
-          {/* Rating & Reviews */}
           <View className="flex-row items-center mb-4">
             <View className="flex-row items-center bg-surface px-3 py-2 rounded-full">
-              <Ionicons name="star" size={16} color="#FFC107" />
+              <Ionicons name="star" size={16} color={palette.accent.warning} />
               <Text className="text-text-primary font-bold ml-1 mr-2">
-                {product.averageRating.toFixed(1)}
+                {(product.averageRating ?? 0).toFixed(1)}
               </Text>
-              <Text className="text-text-secondary text-sm">({product.totalReviews} reviews)</Text>
+              <Text className="text-text-secondary text-sm">
+                ({product.totalReviews ?? 0} reviews)
+              </Text>
             </View>
-            {inStock ? (
-              <View className="ml-3 flex-row items-center">
-                <View className="w-2 h-2 bg-green-500 rounded-full mr-2" />
-                <Text className="text-green-500 font-semibold text-sm">
-                  {product.stock} in stock
-                </Text>
-              </View>
-            ) : (
-              <View className="ml-3 flex-row items-center">
-                <View className="w-2 h-2 bg-red-500 rounded-full mr-2" />
-                <Text className="text-red-500 font-semibold text-sm">Out of Stock</Text>
-              </View>
-            )}
+            <View className="ml-3 flex-row items-center">
+              <View
+                className={`w-2 h-2 rounded-full mr-2 ${inStock ? "bg-green-500" : "bg-red-500"}`}
+              />
+              <Text
+                className={`font-semibold text-sm ${inStock ? "text-green-500" : "text-red-500"}`}
+              >
+                {inStock ? `${product.stock} in stock` : "Out of stock"}
+              </Text>
+            </View>
           </View>
 
-          {/* Price */}
-          <View className="flex-row items-center mb-6">
-            <Text className="text-primary text-4xl font-bold">${product.price.toFixed(2)}</Text>
-          </View>
+          <Text className="text-primary text-4xl font-bold mb-6">
+            ${product.price.toFixed(2)}
+          </Text>
 
-          {/* Quantity */}
           <View className="mb-6">
             <Text className="text-text-primary text-lg font-bold mb-3">Quantity</Text>
-
             <View className="flex-row items-center">
               <TouchableOpacity
                 className="bg-surface rounded-full w-12 h-12 items-center justify-center"
-                onPress={() => setQuantity(Math.max(1, quantity - 1))}
+                onPress={() => setQuantity((current) => Math.max(1, current - 1))}
                 activeOpacity={0.7}
-                disabled={!inStock}
+                disabled={!inStock || cartPending}
                 accessibilityRole="button"
                 accessibilityLabel="Decrease quantity"
               >
-                <Ionicons name="remove" size={24} color={inStock ? "#FFFFFF" : "#666"} />
+                <Ionicons
+                  name="remove"
+                  size={24}
+                  color={!inStock ? palette.text.tertiary : palette.text.primary}
+                />
               </TouchableOpacity>
 
               <Text className="text-text-primary text-xl font-bold mx-6">{quantity}</Text>
 
               <TouchableOpacity
                 className="bg-primary rounded-full w-12 h-12 items-center justify-center"
-                onPress={() => setQuantity(Math.min(product.stock, quantity + 1))}
+                onPress={() => setQuantity((current) => Math.min(product.stock, current + 1))}
                 activeOpacity={0.7}
-                disabled={!inStock || quantity >= product.stock}
+                disabled={!inStock || quantity >= product.stock || cartPending}
                 accessibilityRole="button"
                 accessibilityLabel="Increase quantity"
               >
                 <Ionicons
                   name="add"
                   size={24}
-                  color={!inStock || quantity >= product.stock ? "#666" : "#121212"}
+                  color={
+                    !inStock || quantity >= product.stock
+                      ? palette.text.tertiary
+                      : palette.onPrimary
+                  }
                 />
               </TouchableOpacity>
             </View>
 
-            {quantity >= product.stock && inStock && (
-              <Text className="text-orange-500 text-sm mt-2">Maximum stock reached</Text>
+            {inStock && quantity >= product.stock && (
+              <Text className="text-accent-warning text-sm mt-2">Maximum stock reached</Text>
             )}
           </View>
 
-          {/* Description */}
           <View className="mb-8">
             <Text className="text-text-primary text-lg font-bold mb-3">Description</Text>
             <Text className="text-text-secondary text-base leading-6">{product.description}</Text>
           </View>
         </View>
-        </View>
       </ScrollView>
 
-      {/* Bottom Action Bar */}
       <View
         className="absolute bottom-0 left-0 right-0 bg-background/95 backdrop-blur-xl border-t border-surface px-6 py-4 pb-8"
-        style={{ maxWidth: 960, alignSelf: "center", width: "100%" }}
+        style={{ maxWidth: palette.layout.detailContent, alignSelf: "center", width: "100%" }}
       >
         <View className="flex-row items-center gap-3">
           <View className="flex-1">
-            <Text className="text-text-secondary text-sm mb-1">Total Price</Text>
+            <Text className="text-text-secondary text-sm mb-1">Total price</Text>
             <Text className="text-primary text-2xl font-bold">
               ${(product.price * quantity).toFixed(2)}
             </Text>
@@ -260,21 +288,26 @@ const ProductDetailScreen = () => {
             }`}
             activeOpacity={0.8}
             onPress={handleAddToCart}
-            disabled={!inStock || isAddingToCart}
+            disabled={!inStock || cartPending}
             accessibilityRole="button"
+            accessibilityState={{ disabled: !inStock || cartPending }}
             accessibilityLabel={inStock ? "Add to cart" : "Out of stock"}
           >
-            {isAddingToCart ? (
-              <ActivityIndicator size="small" color="#121212" />
+            {cartPending ? (
+              <ActivityIndicator size="small" color={palette.onPrimary} />
             ) : (
               <>
-                <Ionicons name="cart" size={24} color={!inStock ? "#666" : "#121212"} />
+                <Ionicons
+                  name="cart"
+                  size={24}
+                  color={!inStock ? palette.text.tertiary : palette.onPrimary}
+                />
                 <Text
                   className={`font-bold text-lg ml-2 ${
                     !inStock ? "text-text-secondary" : "text-background"
                   }`}
                 >
-                  {!inStock ? "Out of Stock" : "Add to Cart"}
+                  {!inStock ? "Out of stock" : "Add to cart"}
                 </Text>
               </>
             )}
@@ -286,34 +319,3 @@ const ProductDetailScreen = () => {
 };
 
 export default ProductDetailScreen;
-
-function ErrorUI() {
-  return (
-    <SafeScreen>
-      <View className="flex-1 items-center justify-center px-6">
-        <Ionicons name="alert-circle-outline" size={64} color="#FF6B6B" />
-        <Text className="text-text-primary font-semibold text-xl mt-4">Product not found</Text>
-        <Text className="text-text-secondary text-center mt-2">
-          This product may have been removed or doesn&apos;t exist
-        </Text>
-        <TouchableOpacity
-          className="bg-primary rounded-2xl px-6 py-3 mt-6"
-          onPress={() => router.back()}
-        >
-          <Text className="text-background font-bold">Go Back</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeScreen>
-  );
-}
-
-function LoadingUI() {
-  return (
-    <SafeScreen>
-      <View className="flex-1 items-center justify-center">
-        <ActivityIndicator size="large" color="#1DB954" />
-        <Text className="text-text-secondary mt-4">Loading product...</Text>
-      </View>
-    </SafeScreen>
-  );
-}

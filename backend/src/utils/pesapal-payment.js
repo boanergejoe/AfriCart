@@ -1,5 +1,7 @@
 export function normalizePesapalTransaction(transaction, expected) {
-  const merchantReference = String(transaction?.merchant_reference || "");
+  if (!transaction) throw new Error("PesaPal did not return a transaction status.");
+
+  const merchantReference = String(transaction.merchant_reference || "");
   if (merchantReference !== expected.merchantReference) {
     throw new Error("PesaPal transaction merchant reference does not match the order.");
   }

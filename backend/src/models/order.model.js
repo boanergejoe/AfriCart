@@ -72,7 +72,11 @@ const orderSchema = new mongoose.Schema(
     paymentResult: {
       id: String,
       status: String,
-      provider: String,
+      provider: {
+        type: String,
+        enum: ["pesapal"],
+        default: "pesapal",
+      },
       amount: Number,
       currency: String,
       orderTrackingId: String,

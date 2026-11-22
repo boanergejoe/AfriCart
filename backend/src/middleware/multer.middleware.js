@@ -1,29 +1,20 @@
 import multer from "multer";
-import path from "path";
 
-const storage = multer.diskStorage({
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname || "").toLowerCase();
-    const safeExt = [".jpeg", ".jpg", ".png", ".webp"].includes(ext) ? ext : "";
-    const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, `${unique}${safeExt}`);
-  },
-});
+const ALLOWED_MIME_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
-const fileFilter = (req, file, cb) => {
-  const allowedTypes = /jpeg|jpg|png|webp/;
-  const extname = allowedTypes.test(path.extname(file.originalname).toLocaleLowerCase());
-  const mimeType = allowedTypes.test(file.mimetype);
-
-  if (extname && mimeType) {
+const fileFilter = (_req, file, cb) => {
+  if (ALLOWED_MIME_TYPES.has(file.mimetype)) {
     cb(null, true);
-  } else {
-    cb(new Error("Only image files are allowed (jpeg,jpg,png,webp)"));
+    return;
   }
+
+  cb(new Error("Only JPEG, PNG, and WebP images are allowed"));
 };
 
+// Keep files in memory: no temp-file leftovers and compatible with serverless deployments.
 export const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  limits: { fileSize: MAX_FILE_SIZE, files: 3 },
 });

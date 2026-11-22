@@ -10,6 +10,7 @@ export const useAddresses = () => {
     data: addresses,
     isLoading,
     isError,
+    refetch,
   } = useQuery({
     queryKey: ["addresses"],
     queryFn: async () => {
@@ -57,15 +58,22 @@ export const useAddresses = () => {
     },
   });
 
+  const isAddressPending = (addressId: string) =>
+    (deleteAddressMutation.isPending && deleteAddressMutation.variables === addressId) ||
+    (updateAddressMutation.isPending &&
+      updateAddressMutation.variables?.addressId === addressId);
+
   return {
     addresses: addresses || [],
     isLoading,
     isError,
+    refetch,
     addAddress: addAddressMutation.mutate,
     updateAddress: updateAddressMutation.mutate,
     deleteAddress: deleteAddressMutation.mutate,
     isAddingAddress: addAddressMutation.isPending,
     isUpdatingAddress: updateAddressMutation.isPending,
     isDeletingAddress: deleteAddressMutation.isPending,
+    isAddressPending,
   };
 };

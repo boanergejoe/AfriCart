@@ -94,11 +94,6 @@ PESAPAL_CURRENCY=USD
 PESAPAL_IPN_URL=https://<public-backend-domain>/api/payment/pesapal/ipn
 PESAPAL_IPN_ID=<REGISTERED_IPN_ID>
 PESAPAL_CALLBACK_URL=https://<public-backend-domain>/api/payment/pesapal/callback
-
-# Optional Stripe API integration
-STRIPE_PUBLISHABLE_KEY=<YOUR_STRIPE_PUBLISHABLE_KEY>
-STRIPE_SECRET_KEY=<YOUR_STRIPE_SECRET_KEY>
-STRIPE_WEBHOOK_SECRET=<YOUR_STRIPE_WEBHOOK_SECRET>
 ```
 
 ---
@@ -120,7 +115,8 @@ VITE_SENTRY_DSN=<YOUR_SENTRY_DSN>
 EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=<YOUR_CLERK_PUBLISHABLE_KEY>
 EXPO_PUBLIC_API_URL=https://<public-backend-domain>/api
 
-SENTRY_AUTH_TOKEN=<YOUR_SENTRY_DSN>
+# Optional
+EXPO_PUBLIC_SENTRY_DSN=<YOUR_SENTRY_DSN>
 ```
 
 For local development, use a backend URL reachable from the device (for example
@@ -174,12 +170,13 @@ secrets in `VITE_*` variables.
 - For Inngest: `INNGEST_SIGNING_KEY`.
 - For product image uploads: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and
   `CLOUDINARY_API_SECRET`.
-- For Stripe: `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` when Stripe is enabled.
-- For PesaPal: `PESAPAL_ENV`, `PESAPAL_CONSUMER_KEY`, `PESAPAL_CONSUMER_SECRET`,
-  `PESAPAL_CURRENCY`, `PESAPAL_IPN_URL`, `PESAPAL_IPN_ID`, and `PESAPAL_CALLBACK_URL`.
+- For the only payment provider, PesaPal: `PESAPAL_ENV`, `PESAPAL_CONSUMER_KEY`,
+  `PESAPAL_CONSUMER_SECRET`, `PESAPAL_CURRENCY`, `PESAPAL_IPN_URL`, `PESAPAL_IPN_ID`, and
+  `PESAPAL_CALLBACK_URL`.
 
 Use the backend deployment origin in `PESAPAL_IPN_URL`, ending in
-`/api/payment/pesapal/ipn`. `PESAPAL_CALLBACK_URL` must be the public mobile web callback URL.
+`/api/payment/pesapal/ipn`. `PESAPAL_CALLBACK_URL` must be the public backend callback URL, ending
+in `/api/payment/pesapal/callback`.
 MongoDB transactions require a replica set (MongoDB Atlas is suitable). Vercel provides `PORT`;
 do not configure it manually.
 
@@ -207,11 +204,10 @@ npm run dev
 
 ## 🔧 Run the Mobile
 
-```
-bash
+```bash
 cd mobile
 npm ci
-npx expo start
+npm start
 ```
 
 Then scan the QR code from your phone.

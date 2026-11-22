@@ -1,128 +1,140 @@
 import { useQuery } from "@tanstack/react-query";
-import { orderApi, statsApi } from "../lib/api";
-import { DollarSignIcon, PackageIcon, ShoppingBagIcon, UsersIcon } from "lucide-react";
-import { capitalizeText, formatDate, getOrderStatusBadge } from "../lib/utils";
+import {
+  DollarSignIcon,
+  PackageIcon,
+  ShoppingBagIcon,
+  UsersIcon,
+} from "lucide-react";
+
+import { orderApi, statsApi } from "../lib/api.js";
+import {
+  capitalizeText,
+  formatCurrency,
+  formatDate,
+  getErrorMessage,
+  getOrderStatusBadge,
+} from "../lib/utils.js";
+import { EmptyState, ErrorState, LoadingState } from "../components/StateViews.jsx";
+
+const STAT_ICONS = {
+  "Total Revenue": DollarSignIcon,
+  "Total Orders": ShoppingBagIcon,
+  "Total Customers": UsersIcon,
+  "Total Products": PackageIcon,
+};
 
 function DashboardPage() {
-  const { data: ordersData, isLoading: ordersLoading } = useQuery({
-    queryKey: ["orders"],
-    queryFn: orderApi.getAll,
-  });
+  const ordersQuery = useQuery({ queryKey: ["orders", { pageSize: 5 }], queryFn: () => orderApi.getAll({ limit: 5 }) });
+  const statsQuery = useQuery({ queryKey: ["dashboardStats"], queryFn: statsApi.getDashboard });
 
-  const { data: statsData, isLoading: statsLoading } = useQuery({
-    queryKey: ["dashboardStats"],
-    queryFn: statsApi.getDashboard,
-  });
-
-  // it would be better to send the last 5 items from the api, instead of slicing it here
-  // but we're just keeping it simple here...
-  const recentOrders = ordersData?.orders?.slice(0, 5) || [];
+  const recentOrders = ordersQuery.data?.orders || [];
+  const stats = statsQuery.data;
 
   const statsCards = [
-    {
-      name: "Total Revenue",
-      value: statsLoading ? "..." : `$${statsData?.totalRevenue?.toFixed(2) || 0}`,
-      icon: <DollarSignIcon className="size-8" />,
-    },
-    {
-      name: "Total Orders",
-      value: statsLoading ? "..." : statsData?.totalOrders || 0,
-      icon: <ShoppingBagIcon className="size-8" />,
-    },
-    {
-      name: "Total Customers",
-      value: statsLoading ? "..." : statsData?.totalCustomers || 0,
-      icon: <UsersIcon className="size-8" />,
-    },
-    {
-      name: "Total Products",
-      value: statsLoading ? "..." : statsData?.totalProducts || 0,
-      icon: <PackageIcon className="size-8" />,
-    },
+    { name: "Total Revenue", value: formatCurrency(stats?.totalRevenue || 0) },
+    { name: "Total Orders", value: stats?.totalOrders || 0 },
+    { name: "Total Customers", value: stats?.totalCustomers || 0 },
+    { name: "Total Products", value: stats?.totalProducts || 0 },
   ];
 
   return (
     <div className="space-y-6">
-      {/* STATS */}
-      <div className="stats stats-vertical lg:stats-horizontal shadow w-full bg-base-100">
-        {statsCards.map((stat) => (
-          <div key={stat.name} className="stat">
-            <div className="stat-figure text-primary">{stat.icon}</div>
-            <div className="stat-title">{stat.name}</div>
-            <div className="stat-value">{stat.value}</div>
-          </div>
-        ))}
-      </div>
+      <header>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Store overview</h1>
+        <p className="muted mt-1 text-sm">A snapshot of your AfriCart store performance.</p>
+      </header>
 
-      {/* RECENT ORDERS */}
-      <div className="card bg-base-100 shadow-xl">
-        <div className="card-body">
-          <h2 className="card-title">Recent Orders</h2>
-
-          {ordersLoading ? (
-            <div className="flex justify-center py-8">
-              <span className="loading loading-spinner loading-lg" />
-            </div>
-          ) : recentOrders.length === 0 ? (
-            <div className="text-center py-8 text-base-content/60">No orders yet</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Order ID</th>
-                    <th>Customer</th>
-                    <th>Items</th>
-                    <th>Amount</th>
-                    <th>Status</th>
-                    <th>Date</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {recentOrders.map((order) => (
-                    <tr key={order._id}>
-                      <td>
-                        <span className="font-medium">#{order._id.slice(-8).toUpperCase()}</span>
-                      </td>
-
-                      <td>
-                        <div>
-                          <div className="font-medium">{order.shippingAddress.fullName}</div>
-                          <div className="text-sm opacity-60">
-                            {order.orderItems.length} item(s)
-                          </div>
-                        </div>
-                      </td>
-
-                      <td>
-                        <div className="text-sm">
-                          {order.orderItems[0]?.name}
-                          {order.orderItems.length > 1 && ` +${order.orderItems.length - 1} more`}
-                        </div>
-                      </td>
-
-                      <td>
-                        <span className="font-semibold">${order.totalPrice.toFixed(2)}</span>
-                      </td>
-
-                      <td>
-                        <div className={`badge ${getOrderStatusBadge(order.status)}`}>
-                          {capitalizeText(order.status)}
-                        </div>
-                      </td>
-
-                      <td>
-                        <span className="text-sm opacity-60">{formatDate(order.createdAt)}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+      {statsQuery.isLoading ? (
+        <LoadingState label="Loading store stats…" />
+      ) : statsQuery.isError ? (
+        <div className="surface p-4">
+          <ErrorState
+            message={getErrorMessage(statsQuery.error, "Unable to load store statistics.")}
+            onRetry={statsQuery.refetch}
+          />
         </div>
-      </div>
+      ) : (
+        <section aria-label="Store statistics" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {statsCards.map((stat) => {
+            const Icon = STAT_ICONS[stat.name];
+            return (
+              <article key={stat.name} className="surface flex items-center gap-4 p-5">
+                <div className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Icon className="size-6" aria-hidden="true" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-medium uppercase tracking-wide text-base-content/60">
+                    {stat.name}
+                  </p>
+                  <p className="mt-1 truncate text-2xl font-bold tabular-nums">{stat.value}</p>
+                </div>
+              </article>
+            );
+          })}
+        </section>
+      )}
+
+      <section className="surface overflow-hidden">
+        <div className="flex items-center justify-between border-b border-base-200 px-5 py-4">
+          <h2 className="text-lg font-semibold">Recent orders</h2>
+          <span className="badge badge-ghost badge-sm">Latest {recentOrders.length || 0}</span>
+        </div>
+
+        {ordersQuery.isLoading ? (
+          <LoadingState label="Loading recent orders…" />
+        ) : ordersQuery.isError ? (
+          <ErrorState
+            message={getErrorMessage(ordersQuery.error, "Unable to load recent orders.")}
+            onRetry={ordersQuery.refetch}
+          />
+        ) : recentOrders.length === 0 ? (
+          <EmptyState title="No orders yet" description="New purchases will appear here." />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="table table-zebra">
+              <thead>
+                <tr>
+                  <th>Order</th>
+                  <th>Customer</th>
+                  <th>Items</th>
+                  <th className="text-right">Amount</th>
+                  <th>Status</th>
+                  <th>Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentOrders.map((order) => (
+                  <tr key={order._id}>
+                    <td className="font-medium tabular-nums">
+                      #{String(order._id).slice(-8).toUpperCase()}
+                    </td>
+                    <td>
+                      <div className="font-medium">{order.shippingAddress?.fullName || "—"}</div>
+                      <div className="text-xs text-base-content/70">
+                        {order.orderItems?.length || 0} item(s)
+                      </div>
+                    </td>
+                    <td className="max-w-52 truncate text-sm">
+                      {order.orderItems?.[0]?.name || "—"}
+                      {(order.orderItems?.length || 0) > 1 &&
+                        ` +${order.orderItems.length - 1} more`}
+                    </td>
+                    <td className="text-right font-semibold tabular-nums">
+                      {formatCurrency(order.totalPrice)}
+                    </td>
+                    <td>
+                      <span className={`badge badge-sm ${getOrderStatusBadge(order.status)}`}>
+                        {capitalizeText(order.status)}
+                      </span>
+                    </td>
+                    <td className="text-sm text-base-content/70">{formatDate(order.createdAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </div>
   );
 }

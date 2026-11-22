@@ -1,7 +1,12 @@
 export const capitalizeText = (text) => {
-  if (!text) return text;
+  if (!text) return text ?? "";
   return text.charAt(0).toUpperCase() + text.slice(1);
 };
+
+export const getErrorMessage = (error, fallback = "Something went wrong. Please try again.") =>
+  error?.response?.data?.message ||
+  error?.response?.data?.error ||
+  (error?.message === "Network Error" ? "Cannot reach the server. Check your connection." : fallback);
 
 export const getOrderStatusBadge = (status) => {
   switch (status?.toLowerCase()) {
@@ -17,19 +22,29 @@ export const getOrderStatusBadge = (status) => {
 };
 
 export const getStockStatusBadge = (stock) => {
-  if (stock === 0) return { text: "Out of Stock", class: "badge-error" };
-  if (stock < 20) return { text: "Low Stock", class: "badge-warning" };
+  const quantity = Number(stock);
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    return { text: "Out of Stock", class: "badge-error" };
+  }
+  if (quantity < 20) return { text: "Low Stock", class: "badge-warning" };
   return { text: "In Stock", class: "badge-success" };
 };
 
 export const formatDate = (dateString) => {
   if (!dateString) return "";
   const date = new Date(dateString);
-  if (isNaN(date.getTime())) return "";
+  if (Number.isNaN(date.getTime())) return "";
 
-  return new Date(dateString).toLocaleDateString("en-US", {
+  return date.toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
     year: "numeric",
   });
+};
+
+export const formatCurrency = (amount) => {
+  const value = Number(amount);
+  return Number.isFinite(value)
+    ? value.toLocaleString(undefined, { style: "currency", currency: "USD" })
+    : "$0.00";
 };

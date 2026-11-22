@@ -1,3 +1,4 @@
+import palette from "@/lib/theme";
 import {
   View,
   Text,
@@ -57,8 +58,12 @@ const AddressFormModal = ({
             <Text className="text-text-primary text-2xl font-bold">
               {isEditing ? "Edit Address" : "Add New Address"}
             </Text>
-            <TouchableOpacity onPress={onClose}>
-              <Ionicons name="close" size={28} color="#FFFFFF" />
+            <TouchableOpacity
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel="Close address form"
+            >
+              <Ionicons name="close" size={28} color={palette.text.primary} />
             </TouchableOpacity>
           </View>
 
@@ -68,112 +73,117 @@ const AddressFormModal = ({
             showsVerticalScrollIndicator={false}
           >
             <View className="p-6">
-              {/* LABEL INPUT */}
               <View className="mb-5">
                 <Text className="text-text-primary font-semibold mb-2">Label</Text>
                 <TextInput
                   className="bg-surface text-text-primary p-4 rounded-2xl text-base"
                   placeholder="e.g., Home, Work, Office"
-                  placeholderTextColor="#666"
+                  placeholderTextColor={palette.text.tertiary}
                   value={addressForm.label}
                   onChangeText={(text) => onFormChange({ ...addressForm, label: text })}
+                  accessibilityLabel="Address label"
                 />
               </View>
 
-              {/* NAME INPUT */}
               <View className="mb-5">
                 <Text className="text-text-primary font-semibold mb-2">Full Name</Text>
                 <TextInput
                   className="bg-surface text-text-primary px-4 py-4 rounded-2xl text-base"
                   placeholder="Enter your full name"
-                  placeholderTextColor="#666"
+                  placeholderTextColor={palette.text.tertiary}
                   value={addressForm.fullName}
                   onChangeText={(text) => onFormChange({ ...addressForm, fullName: text })}
+                  accessibilityLabel="Full name"
                 />
               </View>
 
-              {/* Address Input */}
               <View className="mb-5">
                 <Text className="text-text-primary font-semibold mb-2">Street Address</Text>
                 <TextInput
                   className="bg-surface text-text-primary px-4 py-4 rounded-2xl text-base"
                   placeholder="Street address, apt/suite number"
-                  placeholderTextColor="#666"
+                  placeholderTextColor={palette.text.tertiary}
                   value={addressForm.streetAddress}
                   onChangeText={(text) => onFormChange({ ...addressForm, streetAddress: text })}
                   multiline
+                  accessibilityLabel="Street address"
                 />
               </View>
 
-              {/* City Input */}
               <View className="mb-5">
                 <Text className="text-text-primary font-semibold mb-2">City</Text>
                 <TextInput
                   className="bg-surface text-text-primary px-4 py-4 rounded-2xl text-base"
                   placeholder="e.g., New York"
-                  placeholderTextColor="#666"
+                  placeholderTextColor={palette.text.tertiary}
                   value={addressForm.city}
                   onChangeText={(text) => onFormChange({ ...addressForm, city: text })}
+                  accessibilityLabel="City"
                 />
               </View>
 
-              {/* State Input */}
               <View className="mb-5">
                 <Text className="text-text-primary font-semibold mb-2">State</Text>
                 <TextInput
                   className="bg-surface text-text-primary px-4 py-4 rounded-2xl text-base"
                   placeholder="e.g., NY"
-                  placeholderTextColor="#666"
+                  placeholderTextColor={palette.text.tertiary}
                   value={addressForm.state}
                   onChangeText={(text) => onFormChange({ ...addressForm, state: text })}
+                  accessibilityLabel="State"
                 />
               </View>
 
-              {/* ZIP Code Input */}
               <View className="mb-5">
                 <Text className="text-text-primary font-semibold mb-2">ZIP Code</Text>
                 <TextInput
                   className="bg-surface text-text-primary px-4 py-4 rounded-2xl text-base"
                   placeholder="e.g., 10001"
-                  placeholderTextColor="#666"
+                  placeholderTextColor={palette.text.tertiary}
                   value={addressForm.zipCode}
                   onChangeText={(text) => onFormChange({ ...addressForm, zipCode: text })}
                   keyboardType="numeric"
+                  accessibilityLabel="ZIP code"
                 />
               </View>
 
-              {/* Phone Input */}
               <View className="mb-5">
                 <Text className="text-text-primary font-semibold mb-2">Phone Number</Text>
                 <TextInput
                   className="bg-surface text-text-primary px-4 py-4 rounded-2xl text-base"
                   placeholder="+1 (555) 123-4567"
-                  placeholderTextColor="#666"
+                  placeholderTextColor={palette.text.tertiary}
                   value={addressForm.phoneNumber}
                   onChangeText={(text) => onFormChange({ ...addressForm, phoneNumber: text })}
                   keyboardType="phone-pad"
+                  accessibilityLabel="Phone number"
                 />
               </View>
 
-              {/* Default Address Toggle */}
               <View className="bg-surface rounded-2xl p-4 flex-row items-center justify-between mb-6">
                 <Text className="text-text-primary font-semibold">Set as default address</Text>
                 <Switch
                   value={addressForm.isDefault}
                   onValueChange={(value) => onFormChange({ ...addressForm, isDefault: value })}
-                  thumbColor="white"
+                  thumbColor={palette.text.primary}
+                  trackColor={{ false: palette.background.lighter, true: palette.primary.DEFAULT }}
+                  accessibilityLabel="Set as default address"
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: addressForm.isDefault }}
                 />
               </View>
 
-              {/* Save Button */}
               <TouchableOpacity
                 className="bg-primary rounded-2xl py-5 items-center"
                 activeOpacity={0.8}
                 onPress={onSave}
                 disabled={isAddingAddress || isUpdatingAddress}
+                accessibilityRole="button"
+                accessibilityLabel="Save address"
+                accessibilityState={{ disabled: isAddingAddress || isUpdatingAddress }}
               >
                 {isAddingAddress || isUpdatingAddress ? (
-                  <ActivityIndicator size="small" color="#121212" />
+                  <ActivityIndicator size="small" color={palette.onPrimary} />
                 ) : (
                   <Text className="text-background font-bold text-lg">
                     {isEditing ? "Save Changes" : "Add Address"}

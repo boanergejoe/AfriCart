@@ -1,50 +1,50 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import "./index.css";
-import App from "./App.jsx";
-
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
+import { QueryClientProvider } from "@tanstack/react-query";
 import { ClerkProvider } from "@clerk/react";
 import { BrowserRouter } from "react-router";
 import * as Sentry from "@sentry/react";
-import ClerkAxiosTokenProvider from "./components/ClerkAxiosTokenProvider";
 
-// Import your Publishable Key
-const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+import "./index.css";
+import App from "./App.jsx";
+import ClerkAxiosTokenProvider from "./components/ClerkAxiosTokenProvider.jsx";
+import ErrorBoundary from "./components/ErrorBoundary.jsx";
+import { ToastProvider } from "./components/Toast.jsx";
+import { queryClient } from "./lib/queryClient.js";
 
-if (!PUBLISHABLE_KEY) {
-  throw new Error("Missing Publishable Key");
+const publishableKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+if (!publishableKey) throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY");
+
+const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
+if (sentryDsn) {
+  Sentry.init({
+    dsn: sentryDsn,
+    environment: import.meta.env.MODE,
+    sendDefaultPii: false,
+    tracesSampleRate: 0.1,
+    replaysSessionSampleRate: 0,
+    replaysOnErrorSampleRate: 0.1,
+    integrations: [Sentry.replayIntegration()],
+  });
 }
-
-const queryClient = new QueryClient();
-
-Sentry.init({
-  dsn: import.meta.env.VITE_SENTRY_DSN,
-  // Setting this option to true will send default PII data to Sentry.
-  // For example, automatic IP address collection on events
-  sendDefaultPii: true,
-  enableLogs: true,
-
-  integrations: [Sentry.replayIntegration()],
-  // Session Replay
-  replaysSessionSampleRate: 1.0, // This sets the sample rate at 10%. You may want to change it to 100% while in development and then sample at a lower rate in production.
-  replaysOnErrorSampleRate: 1.0,
-});
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <BrowserRouter>
-      <ClerkProvider
-        publishableKey={PUBLISHABLE_KEY}
-        localization={{ signIn: { start: { title: "Sign in to AfriCart" } } }}
-      >
-        <ClerkAxiosTokenProvider>
-          <QueryClientProvider client={queryClient}>
-            <App />
-          </QueryClientProvider>
-        </ClerkAxiosTokenProvider>
-      </ClerkProvider>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <ClerkProvider
+          publishableKey={publishableKey}
+          localization={{ signIn: { start: { title: "Sign in to AfriCart" } } }}
+        >
+          <ClerkAxiosTokenProvider>
+            <QueryClientProvider client={queryClient}>
+              <ToastProvider>
+                <App />
+              </ToastProvider>
+            </QueryClientProvider>
+          </ClerkAxiosTokenProvider>
+        </ClerkProvider>
+      </BrowserRouter>
+    </ErrorBoundary>
   </StrictMode>
 );

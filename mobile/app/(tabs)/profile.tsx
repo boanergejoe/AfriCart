@@ -1,7 +1,8 @@
-import SafeScreen from "@/components/SafeScreen";
 import { useAuth, useUser } from "@clerk/clerk-expo";
+import { Ionicons } from "@expo/vector-icons";
+import { Image } from "expo-image";
+import { router } from "expo-router";
 import { useState } from "react";
-
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -13,15 +14,39 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Image } from "expo-image";
-import { Ionicons } from "@expo/vector-icons";
-import { router } from "expo-router";
+
+import SafeScreen from "@/components/SafeScreen";
+import palette from "@/lib/theme";
 
 const MENU_ITEMS = [
-  { id: 1, icon: "person-outline", title: "Edit Profile", color: "#3B82F6", action: "/profile" },
-  { id: 2, icon: "list-outline", title: "Orders", color: "#10B981", action: "/orders" },
-  { id: 3, icon: "location-outline", title: "Addresses", color: "#F59E0B", action: "/addresses" },
-  { id: 4, icon: "heart-outline", title: "Wishlist", color: "#EF4444", action: "/wishlist" },
+  {
+    id: 1,
+    icon: "person-outline",
+    title: "Edit Profile",
+    color: palette.light.link,
+    action: "/profile",
+  },
+  {
+    id: 2,
+    icon: "list-outline",
+    title: "Orders",
+    color: palette.primary.DEFAULT,
+    action: "/orders",
+  },
+  {
+    id: 3,
+    icon: "location-outline",
+    title: "Addresses",
+    color: palette.accent.warning,
+    action: "/addresses",
+  },
+  {
+    id: 4,
+    icon: "heart-outline",
+    title: "Wishlist",
+    color: palette.accent.danger,
+    action: "/wishlist",
+  },
 ] as const;
 
 const ProfileScreen = () => {
@@ -61,6 +86,7 @@ const ProfileScreen = () => {
       setIsSavingProfile(false);
     }
   };
+
   return (
     <SafeScreen>
       <ScrollView
@@ -68,99 +94,102 @@ const ProfileScreen = () => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 100, alignItems: "center" }}
       >
-        <View style={{ width: "100%", maxWidth: 840 }}>
-        {/* HEADER */}
-        <View className="px-6 pb-8">
-          <View className="bg-surface rounded-3xl p-6">
-            <View className="flex-row items-center">
-              <View className="relative">
-                <Image
-                  source={user?.imageUrl}
-                  style={{ width: 80, height: 80, borderRadius: 40 }}
-                  transition={200}
-                />
-                <View className="absolute -bottom-1 -right-1 bg-primary rounded-full size-7 items-center justify-center border-2 border-surface">
-                  <Ionicons name="checkmark" size={16} color="#121212" />
+        <View style={{ width: "100%", maxWidth: palette.layout.compactContent }}>
+          <View className="px-6 pb-8 pt-6">
+            <View className="bg-surface rounded-3xl p-6">
+              <View className="flex-row items-center">
+                <View className="relative">
+                  <Image
+                    source={user?.imageUrl}
+                    style={{ width: 80, height: 80, borderRadius: 40 }}
+                    transition={200}
+                    accessibilityLabel="Your profile photo"
+                  />
+                  <View className="absolute -bottom-1 -right-1 bg-primary rounded-full size-7 items-center justify-center border-2 border-surface">
+                    <Ionicons name="checkmark" size={16} color={palette.onPrimary} />
+                  </View>
                 </View>
-              </View>
 
-              <View className="flex-1 ml-4">
-                <Text className="text-text-primary text-2xl font-bold mb-1">
-                  {user?.firstName} {user?.lastName}
-                </Text>
-                <Text className="text-text-secondary text-sm" numberOfLines={1}>
-                  {user?.emailAddresses?.[0]?.emailAddress || "No email"}
-                </Text>
+                <View className="flex-1 ml-4">
+                  <Text className="text-text-primary text-2xl font-bold mb-1">
+                    {user?.firstName} {user?.lastName}
+                  </Text>
+                  <Text className="text-text-secondary text-sm" numberOfLines={1}>
+                    {user?.emailAddresses?.[0]?.emailAddress || "No email"}
+                  </Text>
+                </View>
               </View>
             </View>
           </View>
-        </View>
 
-        {/* MENU ITEMS */}
-        <View className="flex-row flex-wrap gap-2 mx-6 mb-3">
-          {MENU_ITEMS.map((item) => (
-            <TouchableOpacity
-              key={item.id}
-              className="bg-surface rounded-2xl p-6 items-center justify-center"
-              style={{ width: "48%" }}
-              activeOpacity={0.7}
-              onPress={() => handleMenuPress(item.action)}
-              accessibilityRole="button"
-              accessibilityLabel={item.title}
-            >
-              <View
-                className="rounded-full w-16 h-16 items-center justify-center mb-4"
-                style={{ backgroundColor: item.color + "20" }}
+          <View className="flex-row flex-wrap gap-2 mx-6 mb-3">
+            {MENU_ITEMS.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                className="bg-surface rounded-2xl p-6 items-center justify-center"
+                style={{ width: "48%" }}
+                activeOpacity={0.7}
+                onPress={() => handleMenuPress(item.action)}
+                accessibilityRole="button"
+                accessibilityLabel={item.title}
               >
-                <Ionicons name={item.icon} size={28} color={item.color} />
+                <View
+                  className="rounded-full w-16 h-16 items-center justify-center mb-4"
+                  style={{ backgroundColor: `${item.color}20` }}
+                >
+                  <Ionicons name={item.icon} size={28} color={item.color} />
+                </View>
+                <Text className="text-text-primary font-bold text-base">{item.title}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View className="mb-3 mx-6 bg-surface rounded-2xl p-4">
+            <TouchableOpacity
+              className="flex-row items-center justify-between py-2"
+              activeOpacity={0.7}
+              onPress={() => router.push("/privacy-security")}
+              accessibilityRole="button"
+              accessibilityLabel="Notification, privacy, and security settings"
+            >
+              <View className="flex-row items-center">
+                <Ionicons name="notifications-outline" size={22} color={palette.text.primary} />
+                <Text className="text-text-primary font-semibold ml-3">Notifications</Text>
               </View>
-              <Text className="text-text-primary font-bold text-base">{item.title}</Text>
+              <Ionicons name="chevron-forward" size={20} color={palette.text.tertiary} />
             </TouchableOpacity>
-          ))}
-        </View>
+          </View>
 
-        {/* NOTIFICATONS BTN */}
-        <View className="mb-3 mx-6 bg-surface rounded-2xl p-4">
+          <View className="mb-3 mx-6 bg-surface rounded-2xl p-4">
+            <TouchableOpacity
+              className="flex-row items-center justify-between py-2"
+              activeOpacity={0.7}
+              onPress={() => router.push("/privacy-security")}
+              accessibilityRole="button"
+              accessibilityLabel="Privacy and security settings"
+            >
+              <View className="flex-row items-center">
+                <Ionicons name="shield-checkmark-outline" size={22} color={palette.text.primary} />
+                <Text className="text-text-primary font-semibold ml-3">Privacy & Security</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={palette.text.tertiary} />
+            </TouchableOpacity>
+          </View>
+
           <TouchableOpacity
-            className="flex-row items-center justify-between py-2"
-            activeOpacity={0.7}
-            onPress={() => router.push("/privacy-security")}
+            className="mx-6 mb-3 bg-surface rounded-2xl py-5 flex-row items-center justify-center border-2 border-red-500/20"
+            activeOpacity={0.8}
+            onPress={() => {
+              void signOut();
+            }}
             accessibilityRole="button"
+            accessibilityLabel="Sign out"
           >
-            <View className="flex-row items-center">
-              <Ionicons name="notifications-outline" size={22} color="#FFFFFF" />
-              <Text className="text-text-primary font-semibold ml-3">Notifications</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#666" />
+            <Ionicons name="log-out-outline" size={22} color={palette.accent.danger} />
+            <Text className="text-red-500 font-bold text-base ml-2">Sign Out</Text>
           </TouchableOpacity>
-        </View>
 
-        {/* PRIVACY AND SECURTIY LINK */}
-        <View className="mb-3 mx-6 bg-surface rounded-2xl p-4">
-          <TouchableOpacity
-            className="flex-row items-center justify-between py-2"
-            activeOpacity={0.7}
-            onPress={() => router.push("/privacy-security")}
-          >
-            <View className="flex-row items-center">
-              <Ionicons name="shield-checkmark-outline" size={22} color="#FFFFFF" />
-              <Text className="text-text-primary font-semibold ml-3">Privacy & Security</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#666" />
-          </TouchableOpacity>
-        </View>
-
-        {/* SIGNOUT BTN */}
-        <TouchableOpacity
-          className="mx-6 mb-3 bg-surface rounded-2xl py-5 flex-row items-center justify-center border-2 border-red-500/20"
-          activeOpacity={0.8}
-          onPress={() => signOut()}
-        >
-          <Ionicons name="log-out-outline" size={22} color="#EF4444" />
-          <Text className="text-red-500 font-bold text-base ml-2">Sign Out</Text>
-        </TouchableOpacity>
-
-        <Text className="mx-6 mb-3 text-center text-text-secondary text-xs">Version 1.0.0</Text>
+          <Text className="mx-6 mb-3 text-center text-text-secondary text-xs">Version 1.0.0</Text>
         </View>
       </ScrollView>
 
@@ -180,17 +209,17 @@ const ProfileScreen = () => {
               justifyContent: "center",
               alignItems: "center",
               padding: 24,
-              backgroundColor: "rgba(0,0,0,0.65)",
+              backgroundColor: palette.overlay,
             }}
           >
             <View
               style={{
                 width: "100%",
-                maxWidth: 420,
+                maxWidth: palette.layout.modal,
                 maxHeight: "90%",
                 padding: 24,
                 borderRadius: 24,
-                backgroundColor: "#1C1C1E",
+                backgroundColor: palette.background.light,
               }}
             >
               <View className="flex-row items-center justify-between mb-5">
@@ -201,7 +230,7 @@ const ProfileScreen = () => {
                   accessibilityRole="button"
                   accessibilityLabel="Close profile editor"
                 >
-                  <Ionicons name="close" size={24} color="#FFFFFF" />
+                  <Ionicons name="close" size={24} color={palette.text.primary} />
                 </TouchableOpacity>
               </View>
 
@@ -210,20 +239,22 @@ const ProfileScreen = () => {
                 value={firstName}
                 onChangeText={setFirstName}
                 placeholder="First name"
-                placeholderTextColor="#777777"
+                placeholderTextColor={palette.text.tertiary}
                 autoCapitalize="words"
                 className="text-text-primary rounded-xl px-4 py-3 mb-4"
-                style={{ backgroundColor: "#282828" }}
+                style={{ backgroundColor: palette.surface.DEFAULT }}
+                accessibilityLabel="First name"
               />
               <Text className="text-text-secondary text-sm mb-2">Last name</Text>
               <TextInput
                 value={lastName}
                 onChangeText={setLastName}
                 placeholder="Last name"
-                placeholderTextColor="#777777"
+                placeholderTextColor={palette.text.tertiary}
                 autoCapitalize="words"
                 className="text-text-primary rounded-xl px-4 py-3"
-                style={{ backgroundColor: "#282828" }}
+                style={{ backgroundColor: palette.surface.DEFAULT }}
+                accessibilityLabel="Last name"
               />
 
               {profileSaveError ? (
@@ -237,17 +268,23 @@ const ProfileScreen = () => {
                   className="rounded-xl px-4 py-3"
                   onPress={() => setShowEditProfile(false)}
                   disabled={isSavingProfile}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cancel editing profile"
                 >
                   <Text className="text-text-secondary font-semibold">Cancel</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   className="bg-primary rounded-xl px-5 py-3"
-                  onPress={handleSaveProfile}
+                  onPress={() => {
+                    void handleSaveProfile();
+                  }}
                   disabled={isSavingProfile}
                   accessibilityRole="button"
+                  accessibilityLabel="Save profile changes"
+                  accessibilityState={{ disabled: isSavingProfile }}
                 >
                   {isSavingProfile ? (
-                    <ActivityIndicator size="small" color="#121212" />
+                    <ActivityIndicator size="small" color={palette.onPrimary} />
                   ) : (
                     <Text className="text-background font-bold">Save</Text>
                   )}
@@ -262,32 +299,3 @@ const ProfileScreen = () => {
 };
 
 export default ProfileScreen;
-
-// REACT NATIVE IMAGE VS EXPO IMAGE:
-
-// React Native Image (what we have used so far):
-// import { Image } from "react-native";
-//
-// <Image source={{ uri: url }} />
-
-// Basic image component
-// No built-in caching optimization
-// Requires source={{ uri: string }}
-
-// Expo Image (from expo-image):
-// import { Image } from "expo-image";
-
-// <Image source={url} />
-
-// Caching - automatic disk/memory caching
-// Placeholder - blur hash, thumbnail while loading
-// Transitions - crossfade, fade animations
-// Better performance - optimized native rendering
-// Simpler syntax: source={url} or source={{ uri: url }}
-// Supports contentFit instead of resizeMode
-
-// Example with expo-image:
-// <Image   source={user?.imageUrl}  placeholder={blurhash}  transition={200}  contentFit="cover"  className="size-20 rounded-full"/>
-
-// Recommendation: For production apps, expo-image is better — faster, cached, smoother UX.
-// React Native's Image works fine for simple cases though.

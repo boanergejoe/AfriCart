@@ -6,3 +6,6 @@ node_modules
 **/.env
 **/.env.*
 !**/.env.example
+
+# Security-sensitive account recovery artifacts must never be committed
+*recovery-codes*

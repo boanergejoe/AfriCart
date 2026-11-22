@@ -1,3 +1,4 @@
+import palette from "@/lib/theme";
 import { Order } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
@@ -39,7 +40,7 @@ const RatingModal = ({
             <View className="bg-surface rounded-3xl p-6 w-full max-w-md max-h-[80%]">
               <View className="items-center mb-4">
                 <View className="bg-primary/20 rounded-full w-16 h-16 items-center justify-center mb-3">
-                  <Ionicons name="star" size={32} color="#1DB954" />
+                  <Ionicons name="star" size={32} color={palette.primary.DEFAULT} />
                 </View>
                 <Text className="text-text-primary text-2xl font-bold mb-1">
                   Rate Your Products
@@ -86,11 +87,14 @@ const RatingModal = ({
                             onPress={() => onRatingChange(productId, star)}
                             activeOpacity={0.7}
                             className="mx-1.5"
+                            accessibilityRole="button"
+                            accessibilityLabel={`Rate ${star} ${star === 1 ? "star" : "stars"}`}
+                            accessibilityState={{ selected: star === currentRating }}
                           >
                             <Ionicons
                               name={star <= currentRating ? "star" : "star-outline"}
                               size={32}
-                              color={star <= currentRating ? "#1DB954" : "#666"}
+                              color={star <= currentRating ? palette.primary.DEFAULT : palette.text.tertiary}
                             />
                           </TouchableOpacity>
                         ))}
@@ -106,9 +110,12 @@ const RatingModal = ({
                   activeOpacity={0.8}
                   onPress={onSubmit}
                   disabled={isSubmitting}
+                  accessibilityRole="button"
+                  accessibilityLabel="Submit all ratings"
+                  accessibilityState={{ disabled: isSubmitting }}
                 >
                   {isSubmitting ? (
-                    <ActivityIndicator size="small" color="#121212" />
+                    <ActivityIndicator size="small" color={palette.onPrimary} />
                   ) : (
                     <Text className="text-background font-bold text-base">Submit All Ratings</Text>
                   )}

@@ -2,3 +2,66 @@
 @plugin "daisyui" {
   themes: forest;
 }
+
+/* Explicit responsive breakpoints shared by the admin layout utilities. */
+@theme {
+  --breakpoint-sm: 40rem;
+  --breakpoint-md: 48rem;
+  --breakpoint-lg: 64rem;
+  --breakpoint-xl: 80rem;
+}
+
+@layer base {
+  [data-theme="forest"] {
+    --color-base-100: #ffffff;
+    --color-base-200: #f4f7f5;
+    --color-base-300: #dfe8e3;
+    --color-base-content: #172a22;
+    --color-primary: #0f7a52;
+    --color-primary-content: #ffffff;
+    --color-secondary: #1c4f6e;
+    --color-secondary-content: #ffffff;
+    --radius-selector: 0.75rem;
+    --radius-field: 0.6rem;
+    --radius-box: 1rem;
+  }
+
+  html {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    min-height: 100vh;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--color-primary) 25%, transparent);
+  }
+}
+
+@layer utilities {
+  .surface {
+    @apply rounded-2xl border border-base-300 bg-base-100 shadow-sm;
+  }
+
+  .muted {
+    @apply text-base-content/75;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -1,3 +1,4 @@
+import palette from "@/lib/theme";
 import { useAddresses } from "@/hooks/useAddressess";
 import { Address } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
@@ -28,7 +29,7 @@ const AddressSelectionModal = ({
           <View className="flex-row items-center justify-between p-6 border-b border-surface">
             <Text className="text-text-primary text-2xl font-bold">Select Address</Text>
             <TouchableOpacity onPress={onClose} className="bg-surface rounded-full p-2">
-              <Ionicons name="close" size={24} color="#FFFFFF" />
+              <Ionicons name="close" size={24} color={palette.text.primary} />
             </TouchableOpacity>
           </View>
 
@@ -36,7 +37,7 @@ const AddressSelectionModal = ({
           <ScrollView className="flex-1 p-6">
             {addressesLoading ? (
               <View className="py-8">
-                <ActivityIndicator size="large" color="#00D9FF" />
+                <ActivityIndicator size="large" color={palette.accent.info} />
               </View>
             ) : (
               <View className="gap-4">
@@ -76,7 +77,7 @@ const AddressSelectionModal = ({
                       </View>
                       {selectedAddress?._id === address._id && (
                         <View className="bg-primary rounded-full p-2 ml-3">
-                          <Ionicons name="checkmark" size={24} color="#121212" />
+                          <Ionicons name="checkmark" size={24} color={palette.onPrimary} />
                         </View>
                       )}
                     </View>
@@ -97,13 +98,13 @@ const AddressSelectionModal = ({
             >
               <View className="flex-row items-center justify-center">
                 {isProcessing ? (
-                  <ActivityIndicator size="small" color="#121212" />
+                  <ActivityIndicator size="small" color={palette.onPrimary} />
                 ) : (
                   <>
                     <Text className="text-background font-bold text-lg mr-2">
                       Continue to Payment
                     </Text>
-                    <Ionicons name="arrow-forward" size={20} color="#121212" />
+                    <Ionicons name="arrow-forward" size={20} color={palette.onPrimary} />
                   </>
                 )}
               </View>

@@ -1,7 +1,9 @@
+import { Ionicons } from "@expo/vector-icons";
 import { Link } from "expo-router";
 import Head from "expo-router/head";
-import { Ionicons } from "@expo/vector-icons";
 import { Pressable, Text, View } from "react-native";
+
+import palette from "@/lib/theme";
 
 export default function NotFoundScreen() {
   return (
@@ -15,14 +17,18 @@ export default function NotFoundScreen() {
           alignItems: "center",
           justifyContent: "center",
           padding: 24,
-          backgroundColor: "#111111",
+          backgroundColor: palette.background.DEFAULT,
         }}
       >
-        <Ionicons name="bag-handle-outline" size={40} color="#20C65A" />
-        <Text style={{ marginTop: 16, fontSize: 64, fontWeight: "800", color: "#FFFFFF" }}>
+        <Ionicons name="bag-handle-outline" size={40} color={palette.primary.DEFAULT} />
+        <Text
+          style={{ marginTop: 16, fontSize: 64, fontWeight: "800", color: palette.text.primary }}
+        >
           404
         </Text>
-        <Text style={{ marginTop: 8, fontSize: 22, fontWeight: "700", color: "#FFFFFF" }}>
+        <Text
+          style={{ marginTop: 8, fontSize: 22, fontWeight: "700", color: palette.text.primary }}
+        >
           Page not found
         </Text>
         <Text
@@ -32,7 +38,7 @@ export default function NotFoundScreen() {
             textAlign: "center",
             fontSize: 15,
             lineHeight: 22,
-            color: "#A3A3A3",
+            color: palette.text.secondary,
           }}
         >
           The link may be broken, or the page may have moved.
@@ -40,15 +46,16 @@ export default function NotFoundScreen() {
         <Link href="/" asChild>
           <Pressable
             accessibilityRole="button"
+            accessibilityLabel="Back to shop"
             style={{
               marginTop: 24,
               borderRadius: 999,
               paddingHorizontal: 24,
               paddingVertical: 12,
-              backgroundColor: "#16A34A",
+              backgroundColor: palette.primary.dark,
             }}
           >
-            <Text style={{ fontSize: 15, fontWeight: "700", color: "#FFFFFF" }}>
+            <Text style={{ fontSize: 15, fontWeight: "700", color: palette.text.primary }}>
               Back to shop
             </Text>
           </Pressable>

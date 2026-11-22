@@ -1,41 +1,33 @@
 import { UserButton } from "@clerk/react";
 import { useLocation } from "react-router";
-
-import {
-  ClipboardListIcon,
-  HomeIcon,
-  PanelLeftIcon,
-  ShoppingBagIcon,
-  UsersIcon,
-} from "lucide-react";
-
-// eslint-disable-next-line
-export const NAVIGATION = [
-  { name: "Dashboard", path: "/dashboard", icon: <HomeIcon className="size-5" /> },
-  { name: "Products", path: "/products", icon: <ShoppingBagIcon className="size-5" /> },
-  { name: "Orders", path: "/orders", icon: <ClipboardListIcon className="size-5" /> },
-  { name: "Customers", path: "/customers", icon: <UsersIcon className="size-5" /> },
-];
+import { PanelLeftIcon } from "lucide-react";
+import { getPageTitle } from "../lib/navigation.js";
 
 function Navbar() {
-  const location = useLocation();
+  const { pathname } = useLocation();
 
   return (
-    <div className="navbar w-full bg-base-300">
-      <label htmlFor="my-drawer" className="btn btn-square btn-ghost" aria-label="open sidebar">
+    <header className="navbar sticky top-0 z-30 min-h-16 gap-2 border-b border-base-300 bg-base-100/95 px-4 backdrop-blur sm:px-6">
+      <label
+        htmlFor="admin-drawer"
+        className="btn btn-square btn-ghost lg:hidden"
+        aria-label="Open navigation menu"
+      >
         <PanelLeftIcon className="size-5" />
       </label>
 
-      <div className="flex-1 px-4">
-        <h1 className="text-xl font-bold">
-          {NAVIGATION.find((item) => item.path === location.pathname)?.name || "Dashboard"}
-        </h1>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium uppercase tracking-widest text-base-content/50">
+          AfriCart Store
+        </p>
+        <h1 className="truncate text-lg font-semibold sm:text-xl">{getPageTitle(pathname)}</h1>
       </div>
 
-      <div className="mr-5">
+      <div className="flex items-center gap-3">
+        <span className="hidden text-sm font-medium sm:inline">Administrator</span>
         <UserButton />
       </div>
-    </div>
+    </header>
   );
 }
 

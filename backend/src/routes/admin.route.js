@@ -3,7 +3,7 @@ import {
   createProduct,
   getAllCustomers,
   getAllOrders,
-  getAllProducts,
+  getAdminProducts,
   getDashboardStats,
   updateOrderStatus,
   updateProduct,
@@ -14,11 +14,14 @@ import { upload } from "../middleware/multer.middleware.js";
 
 const router = Router();
 
-// optimization - DRY
+// Every route below requires an authenticated Clerk user with the configured admin email.
 router.use(protectRoute, adminOnly);
 
+// Lets the dashboard verify access explicitly instead of rendering an empty shell on 403.
+router.get("/access", (_req, res) => res.status(200).json({ allowed: true }));
+
 router.post("/products", upload.array("images", 3), createProduct);
-router.get("/products", getAllProducts);
+router.get("/products", getAdminProducts);
 router.put("/products/:id", upload.array("images", 3), updateProduct);
 router.delete("/products/:id", deleteProduct);
 

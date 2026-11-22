@@ -1,25 +1,46 @@
 import { useEffect } from "react";
 import { useAuth } from "@clerk/react";
 import axiosInstance from "../lib/axios";
+import { queryClient } from "../lib/queryClient";
 
 function ClerkAxiosTokenProvider({ children }) {
-  const { getToken } = useAuth();
+  const { getToken, signOut, userId } = useAuth();
 
   useEffect(() => {
-    const interceptor = axiosInstance.interceptors.request.use(async (config) => {
-      const token = await getToken();
+    // Never let cached admin data (customer names, emails, addresses) survive a sign-in switch.
+    queryClient.clear();
+  }, [userId]);
 
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+  useEffect(() => {
+    const requestInterceptor = axiosInstance.interceptors.request.use(async (config) => {
+      if (config.skipAuth) return config;
+
+      try {
+        const token = await getToken();
+        if (token) config.headers.Authorization = `Bearer ${token}`;
+      } catch {
+        // Let the response from the server decide; a 401 will sign the user out below.
       }
 
       return config;
     });
 
+    const responseInterceptor = axiosInstance.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        if (error.response?.status === 401 && userId) {
+          queryClient.clear();
+          await signOut();
+        }
+        return Promise.reject(error);
+      }
+    );
+
     return () => {
-      axiosInstance.interceptors.request.eject(interceptor);
+      axiosInstance.interceptors.request.eject(requestInterceptor);
+      axiosInstance.interceptors.response.eject(responseInterceptor);
     };
-  }, [getToken]);
+  }, [getToken, signOut, userId]);
 
   return children;
 }

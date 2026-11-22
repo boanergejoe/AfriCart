@@ -52,7 +52,7 @@ export interface Order {
   paymentResult: {
     id: string;
     status: string;
-    provider?: "stripe" | "pesapal";
+    provider?: "pesapal";
     currency?: string;
     orderTrackingId?: string;
     paymentMethod?: string;
