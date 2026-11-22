@@ -423,3 +423,98 @@ export async function handlePesapalIPN(req, res) {
     return response(500);
   }
 }
+
+function paymentCallbackPage(status) {
+  const messages = {
+    succeeded: [
+      "Payment confirmed",
+      "PesaPal confirmed your payment. Your AfriCart order has been updated.",
+    ],
+    failed: [
+      "Payment not completed",
+      "PesaPal did not complete this payment. Check My Orders before trying again.",
+    ],
+    invalid: [
+      "Payment is not confirmed",
+      "PesaPal has not confirmed this payment. Check My Orders before making another payment.",
+    ],
+    reversed: [
+      "Payment reversed",
+      "PesaPal reports that this payment was reversed. Contact AfriCart support if you need help.",
+    ],
+    pending: [
+      "Payment processing",
+      "PesaPal is still processing this payment. Do not pay again; check My Orders for updates.",
+    ],
+    unavailable: [
+      "Unable to verify payment",
+      "AfriCart could not verify this payment right now. Check My Orders before trying again.",
+    ],
+  };
+  const [title, message] = messages[status] || messages.unavailable;
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex,nofollow">
+    <title>${title} | AfriCart</title>
+    <style>
+      body{margin:0;min-height:100vh;display:grid;place-items:center;background:#101411;color:#f4f7f4;font:16px system-ui,sans-serif}
+      main{width:min(90vw,520px);box-sizing:border-box;padding:36px;border:1px solid #29352d;border-radius:20px;background:#171e19;text-align:center}
+      h1{margin:0 0 14px;font-size:26px}
+      p{margin:0;color:#bdc8bf;line-height:1.6}
+      strong{color:#49d17d}
+    </style>
+  </head>
+  <body>
+    <main>
+      <strong>AfriCart</strong>
+      <h1>${title}</h1>
+      <p>${message}</p>
+      <p style="margin-top:20px">You can return to the AfriCart app now.</p>
+    </main>
+  </body>
+</html>`;
+}
+
+export async function handlePesapalCallback(req, res) {
+  const callback = readNotification(req);
+  const sendPage = (status, httpStatus = 200) =>
+    res
+      .status(httpStatus)
+      .set("Cache-Control", "no-store")
+      .set("X-Content-Type-Options", "nosniff")
+      .type("html")
+      .send(paymentCallbackPage(status));
+
+  if (!callback.trackingId || !callback.merchantReference) {
+    return sendPage("unavailable", 400);
+  }
+
+  try {
+    const order = await Order.findOne({
+      "paymentResult.id": callback.merchantReference,
+      "paymentResult.provider": "pesapal",
+    });
+    if (!order) return sendPage("unavailable", 404);
+
+    const savedTrackingId = order.paymentResult.orderTrackingId;
+    if (savedTrackingId && savedTrackingId !== callback.trackingId) {
+      return sendPage("unavailable", 400);
+    }
+
+    const transaction = await getPesapalTransactionStatus(callback.trackingId);
+    const updatedOrder = await updateOrderFromTransaction(
+      order._id,
+      callback.trackingId,
+      transaction
+    );
+
+    return sendPage(updatedOrder.paymentResult.status);
+  } catch (error) {
+    console.error("PesaPal browser callback verification failed:", error.message);
+    return sendPage("unavailable", 502);
+  }
+}

@@ -44,15 +44,21 @@ PESAPAL_CONSUMER_SECRET=<YOUR_PESAPAL_CONSUMER_SECRET>
 PESAPAL_CURRENCY=USD
 PESAPAL_IPN_URL=https://<public-backend-domain>/api/payment/pesapal/ipn
 PESAPAL_IPN_ID=<REGISTERED_IPN_ID>
-PESAPAL_CALLBACK_URL=https://<public-mobile-web-domain>/payment/callback
+PESAPAL_CALLBACK_URL=https://<public-backend-domain>/api/payment/pesapal/callback
 ```
 
-Deploy the backend and mobile web callback first so both URLs are public and use HTTPS. Then run
-`npm run pesapal:register-ipn` from `backend/` with the sandbox credentials and copy the printed
-`PESAPAL_IPN_ID` into `backend/.env`. Use PesaPal live credentials and set `PESAPAL_ENV=live` only
-after a successful sandbox checkout. The backend uses MongoDB transactions for idempotent payment,
-stock, and cart updates, so the database must support transactions (MongoDB Atlas does). Set
-`MOBILE_CLIENT_URL` to the mobile web app's origin so its checkout and callback requests pass CORS.
+Deploy the backend with a public HTTPS URL before registering the IPN. The browser callback is
+served by the backend, while the public IPN endpoint confirms payments when customers close the
+browser. Run `npm run pesapal:register-ipn` from `backend/`; it registers the IPN and saves the
+returned ID directly to `backend/.env` without printing it. Use PesaPal sandbox credentials for
+testing and switch to live credentials only when ready for real charges. The backend uses MongoDB
+transactions for idempotent payment, stock, and cart updates, so the database must support
+transactions (MongoDB Atlas does). Set `MOBILE_CLIENT_URL` to the customer-facing mobile web
+origin so its API requests pass CORS.
+
+For a Vercel-hosted backend, add the same `PESAPAL_*` values to the Vercel project's server-side
+environment settings and redeploy; local `backend/.env` values do not automatically reach Vercel.
+Never add consumer credentials to `EXPO_PUBLIC_*` variables.
 
 ---
 
@@ -87,7 +93,7 @@ PESAPAL_CONSUMER_SECRET=<YOUR_PESAPAL_CONSUMER_SECRET>
 PESAPAL_CURRENCY=USD
 PESAPAL_IPN_URL=https://<public-backend-domain>/api/payment/pesapal/ipn
 PESAPAL_IPN_ID=<REGISTERED_IPN_ID>
-PESAPAL_CALLBACK_URL=https://<public-mobile-web-domain>/payment/callback
+PESAPAL_CALLBACK_URL=https://<public-backend-domain>/api/payment/pesapal/callback
 
 # Optional Stripe API integration
 STRIPE_PUBLISHABLE_KEY=<YOUR_STRIPE_PUBLISHABLE_KEY>

@@ -4,6 +4,7 @@ import { createPaymentIntent, handleWebhook } from "../controllers/payment.contr
 import {
   createPesapalCheckout,
   getPesapalPaymentStatus,
+  handlePesapalCallback,
   handlePesapalIPN,
 } from "../controllers/pesapal.controller.js";
 
@@ -12,6 +13,7 @@ const router = Router();
 router.post("/create-intent", protectRoute, createPaymentIntent);
 router.post("/pesapal/checkout", protectRoute, createPesapalCheckout);
 router.get("/pesapal/status/:merchantReference", protectRoute, getPesapalPaymentStatus);
+router.get("/pesapal/callback", handlePesapalCallback);
 router.get("/pesapal/ipn", handlePesapalIPN);
 router.post("/pesapal/ipn", handlePesapalIPN);
 
