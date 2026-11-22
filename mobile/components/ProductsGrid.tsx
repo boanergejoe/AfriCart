@@ -2,19 +2,12 @@ import { useEffect, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
-import {
-  ActivityIndicator,
-  FlatList,
-  Platform,
-  Text,
-  TouchableOpacity,
-  View,
-  Alert,
-} from "react-native";
+import { ActivityIndicator, FlatList, Text, TouchableOpacity, View } from "react-native";
 
 import { useBreakpoints } from "@/hooks/useBreakpoints";
 import useCart from "@/hooks/useCart";
 import useWishlist from "@/hooks/useWishlist";
+import { showMessage } from "@/lib/alerts";
 import palette from "@/lib/theme";
 import { getErrorMessage } from "@/lib/utils";
 import { Product } from "@/types";
@@ -187,14 +180,6 @@ const ProductsGrid = ({
       ListEmptyComponent={() => <NoProductsFound hasCatalogProducts={hasCatalogProducts} />}
     />
   );
-};
-
-const showMessage = (title: string, message: string) => {
-  if (Platform.OS === "web" && typeof window !== "undefined") {
-    window.alert(`${title}\n\n${message}`);
-    return;
-  }
-  Alert.alert(title, message);
 };
 
 export default ProductsGrid;

@@ -38,6 +38,17 @@ app.use(
 
 app.use(clerkMiddleware());
 
+// startServer() handles this locally; Vercel never calls it, so every API request
+// must ensure the shared Mongoose connection is ready. connectDB() is idempotent.
+app.use(async (_req, _res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.use("/api/payment", express.json(), paymentRoutes);
 
 app.use(express.json());

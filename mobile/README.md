@@ -41,6 +41,12 @@ TanStack Query. It talks to the shared Express API in `../backend`.
 - Authentication is handled by Clerk. The root layout guards protected screens and the shared API
   client attaches a fresh Clerk token to every request. Cache data is cleared when the signed-in
   user changes.
+- On web, `app/(auth)/index.web.tsx` renders Clerk's sign-in-or-up component, so customers can
+  create an email/password account or use a configured social provider. Enable email/password in the
+  Clerk Dashboard. Native builds keep the Google/Apple sign-in screen.
+- Vercel rewrites `/product/<id>` to the static `/product` page with the ID as a query parameter, so
+  refreshing a product link works on the static site. PesaPal callbacks return to
+  `app/payment/callback.tsx` through the backend redirect.
 - Product images are uploaded by the admin dashboard to Cloudinary; the mobile app loads the
   returned URLs.
 - Responsive widths and column counts are centralized in `lib/theme.js` and exposed through

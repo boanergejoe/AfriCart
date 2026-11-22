@@ -1,5 +1,7 @@
 import crypto from "node:crypto";
 import mongoose from "mongoose";
+
+import { ENV } from "../config/env.js";
 import { Cart } from "../models/cart.model.js";
 import { Order } from "../models/order.model.js";
 import { Product } from "../models/product.model.js";
@@ -481,18 +483,38 @@ function paymentCallbackPage(status) {
 </html>`;
 }
 
+function storefrontCallbackUrl(status, trackingId, merchantReference) {
+  if (!ENV.MOBILE_CLIENT_URL) return null;
+
+  try {
+    const url = new URL(ENV.MOBILE_CLIENT_URL);
+    if (!["http:", "https:"].includes(url.protocol)) return null;
+
+    url.pathname = `${url.pathname.replace(/\/$/, "")}/payment/callback`;
+    url.hash = "";
+    url.search = "";
+    if (trackingId) url.searchParams.set("OrderTrackingId", trackingId);
+    if (merchantReference) url.searchParams.set("OrderMerchantReference", merchantReference);
+    url.searchParams.set("status", status);
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
 export async function handlePesapalCallback(req, res) {
   const callback = readNotification(req);
-  const sendPage = (status, httpStatus = 200) =>
-    res
-      .status(httpStatus)
-      .set("Cache-Control", "no-store")
-      .set("X-Content-Type-Options", "nosniff")
-      .type("html")
-      .send(paymentCallbackPage(status));
+  const respond = (status, httpStatus = 200) => {
+    const location = storefrontCallbackUrl(status, callback.trackingId, callback.merchantReference);
+    res.set("Cache-Control", "no-store").set("X-Content-Type-Options", "nosniff");
+
+    if (location) return res.redirect(302, location);
+
+    return res.status(httpStatus).type("html").send(paymentCallbackPage(status));
+  };
 
   if (!callback.trackingId || !callback.merchantReference) {
-    return sendPage("unavailable", 400);
+    return respond("unavailable", 400);
   }
 
   try {
@@ -500,11 +522,11 @@ export async function handlePesapalCallback(req, res) {
       "paymentResult.id": callback.merchantReference,
       "paymentResult.provider": "pesapal",
     });
-    if (!order) return sendPage("unavailable", 404);
+    if (!order) return respond("unavailable", 404);
 
     const savedTrackingId = order.paymentResult.orderTrackingId;
     if (savedTrackingId && savedTrackingId !== callback.trackingId) {
-      return sendPage("unavailable", 400);
+      return respond("unavailable", 400);
     }
 
     const transaction = await getPesapalTransactionStatus(callback.trackingId);
@@ -514,9 +536,9 @@ export async function handlePesapalCallback(req, res) {
       transaction
     );
 
-    return sendPage(updatedOrder.paymentResult.status);
+    return respond(updatedOrder.paymentResult.status);
   } catch (error) {
     console.error("PesaPal browser callback verification failed:", error.message);
-    return sendPage("unavailable", 502);
+    return respond("unavailable", 502);
   }
 }

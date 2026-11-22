@@ -1,6 +1,7 @@
 import { useSSO } from "@clerk/clerk-expo";
 import { useState } from "react";
-import { Alert } from "react-native";
+
+import { showMessage } from "@/lib/alerts";
 
 function useSocialAuth() {
   const [loadingStrategy, setLoadingStrategy] = useState<string | null>(null);
@@ -17,7 +18,7 @@ function useSocialAuth() {
     } catch (error) {
       console.log("💥 Error in social auth:", error);
       const provider = strategy === "oauth_google" ? "Google" : "Apple";
-      Alert.alert("Error", `Failed to sign in with ${provider}. Please try again.`);
+      showMessage("Error", `Failed to sign in with ${provider}. Please try again.`);
     } finally {
       setLoadingStrategy(null);
     }

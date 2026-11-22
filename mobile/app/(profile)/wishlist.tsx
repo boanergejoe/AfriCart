@@ -1,7 +1,5 @@
 import {
   ActivityIndicator,
-  Alert,
-  Platform,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -17,16 +15,9 @@ import LoadingState from "@/components/LoadingState";
 import SafeScreen from "@/components/SafeScreen";
 import useCart from "@/hooks/useCart";
 import useWishlist from "@/hooks/useWishlist";
+import { confirmAction, showMessage } from "@/lib/alerts";
 import palette from "@/lib/theme";
 import { getErrorMessage } from "@/lib/utils";
-
-const showMessage = (title: string, message: string) => {
-  if (Platform.OS === "web" && typeof window !== "undefined") {
-    window.alert(`${title}\n\n${message}`);
-    return;
-  }
-  Alert.alert(title, message);
-};
 
 const WishlistScreen = () => {
   const {
@@ -38,22 +29,17 @@ const WishlistScreen = () => {
   } = useWishlist();
   const { addToCart, isProductPending: isCartItemPending } = useCart();
 
-  const handleRemoveFromWishlist = (productId: string, productName: string) => {
-    const remove = () =>
-      removeFromWishlist(productId, {
-        onError: (error: unknown) =>
-          showMessage("Could not remove item", getErrorMessage(error)),
-      });
+  const handleRemoveFromWishlist = async (productId: string, productName: string) => {
+    const confirmed = await confirmAction(
+      "Remove from wishlist",
+      `Remove ${productName} from your wishlist?`,
+      { confirmLabel: "Remove", destructive: true }
+    );
+    if (!confirmed) return;
 
-    if (Platform.OS === "web" && typeof window !== "undefined") {
-      if (window.confirm(`Remove ${productName} from your wishlist?`)) remove();
-      return;
-    }
-
-    Alert.alert("Remove from wishlist", `Remove ${productName} from your wishlist?`, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Remove", style: "destructive", onPress: remove },
-    ]);
+    removeFromWishlist(productId, {
+      onError: (error: unknown) => showMessage("Could not remove item", getErrorMessage(error)),
+    });
   };
 
   const handleAddToCart = (productId: string, productName: string) => {

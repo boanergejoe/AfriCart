@@ -6,7 +6,6 @@ import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import {
   ActivityIndicator,
-  Alert,
   Platform,
   ScrollView,
   Text,
@@ -22,6 +21,7 @@ import OrderSummary from "@/components/OrderSummary";
 import SafeScreen from "@/components/SafeScreen";
 import useCart from "@/hooks/useCart";
 import { useAddresses } from "@/hooks/useAddressess";
+import { confirmAction, showMessage } from "@/lib/alerts";
 import { useApi } from "@/lib/api";
 import palette from "@/lib/theme";
 import { delay, getErrorMessage } from "@/lib/utils";
@@ -85,14 +85,6 @@ const CartScreen = () => {
   const tax = taxCents / 100;
   const total = totalCents / 100;
 
-  const showMessage = (title: string, message: string) => {
-    if (Platform.OS === "web" && typeof window !== "undefined") {
-      window.alert(`${title}\n\n${message}`);
-      return;
-    }
-    Alert.alert(title, message);
-  };
-
   const handleQuantityChange = (productId: string, currentQuantity: number, change: number) => {
     const quantity = currentQuantity + change;
     if (quantity < 1) return;
@@ -109,16 +101,12 @@ const CartScreen = () => {
     });
   };
 
-  const handleRemoveItem = (productId: string, productName: string) => {
-    if (Platform.OS === "web" && typeof window !== "undefined") {
-      if (window.confirm(`Remove ${productName} from your cart?`)) removeItem(productId);
-      return;
-    }
-
-    Alert.alert("Remove item", `Remove ${productName} from your cart?`, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Remove", style: "destructive", onPress: () => removeItem(productId) },
-    ]);
+  const handleRemoveItem = async (productId: string, productName: string) => {
+    const confirmed = await confirmAction("Remove item", `Remove ${productName} from your cart?`, {
+      confirmLabel: "Remove",
+      destructive: true,
+    });
+    if (confirmed) removeItem(productId);
   };
 
   const handleCheckout = () => {

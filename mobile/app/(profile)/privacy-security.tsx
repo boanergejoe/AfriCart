@@ -1,9 +1,10 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Alert, Platform, ScrollView, Switch, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, Switch, Text, TouchableOpacity, View } from "react-native";
 
 import SafeScreen from "@/components/SafeScreen";
+import { showMessage as showInfo } from "@/lib/alerts";
 import palette from "@/lib/theme";
 
 type SettingIcon = keyof typeof Ionicons.glyphMap;
@@ -22,14 +23,6 @@ type AccountOption = {
   icon: SettingIcon;
   title: string;
   description: string;
-};
-
-const showInfo = (title: string, message: string) => {
-  if (Platform.OS === "web" && typeof window !== "undefined") {
-    window.alert(`${title}\n\n${message}`);
-    return;
-  }
-  Alert.alert(title, message);
 };
 
 function PrivacyAndSecurityScreen() {
@@ -174,7 +167,7 @@ function PrivacyAndSecurityScreen() {
             onPress={() =>
               showInfo(
                 "Password changes",
-                "Sign in with the same Google or Apple account to manage your password."
+                "Use the sign-in method you chose on the sign-in page to manage your account."
               )
             }
             accessibilityRole="button"

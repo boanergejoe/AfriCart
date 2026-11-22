@@ -1,4 +1,4 @@
-import { Alert, Platform, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 import AddressCard from "@/components/AddressCard";
 import AddressesHeader from "@/components/AddressesHeader";
@@ -8,6 +8,7 @@ import { ErrorState } from "@/components/ErrorState";
 import LoadingState from "@/components/LoadingState";
 import SafeScreen from "@/components/SafeScreen";
 import { useAddresses } from "@/hooks/useAddressess";
+import { confirmAction, showMessage } from "@/lib/alerts";
 import palette from "@/lib/theme";
 import { getErrorMessage } from "@/lib/utils";
 import { Address } from "@/types";
@@ -63,21 +64,16 @@ function AddressesScreen() {
     setShowAddressForm(true);
   };
 
-  const handleDeleteAddress = (addressId: string, label: string) => {
-    const remove = () =>
-      deleteAddress(addressId, {
-        onError: (error: unknown) => Alert.alert("Could not delete address", getErrorMessage(error)),
-      });
+  const handleDeleteAddress = async (addressId: string, label: string) => {
+    const confirmed = await confirmAction("Delete address", `Delete ${label}?`, {
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!confirmed) return;
 
-    if (Platform.OS === "web" && typeof window !== "undefined") {
-      if (window.confirm(`Delete ${label}?`)) remove();
-      return;
-    }
-
-    Alert.alert("Delete address", `Delete ${label}?`, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: "destructive", onPress: remove },
-    ]);
+    deleteAddress(addressId, {
+      onError: (error: unknown) => showMessage("Could not delete address", getErrorMessage(error)),
+    });
   };
 
   const handleSaveAddress = () => {
@@ -92,7 +88,7 @@ function AddressesScreen() {
     ];
 
     if (requiredFields.some((field) => !field.trim())) {
-      Alert.alert("Missing information", "Please fill in all fields.");
+      showMessage("Missing information", "Please fill in all fields.");
       return;
     }
 
@@ -103,10 +99,10 @@ function AddressesScreen() {
           onSuccess: () => {
             setShowAddressForm(false);
             setEditingAddressId(null);
-            Alert.alert("Saved", "Address updated successfully.");
+            showMessage("Saved", "Address updated successfully.");
           },
           onError: (error: unknown) =>
-            Alert.alert("Could not update address", getErrorMessage(error)),
+            showMessage("Could not update address", getErrorMessage(error)),
         }
       );
       return;
@@ -115,9 +111,9 @@ function AddressesScreen() {
     addAddress(addressForm, {
       onSuccess: () => {
         setShowAddressForm(false);
-        Alert.alert("Saved", "Address added successfully.");
+        showMessage("Saved", "Address added successfully.");
       },
-      onError: (error: unknown) => Alert.alert("Could not add address", getErrorMessage(error)),
+      onError: (error: unknown) => showMessage("Could not add address", getErrorMessage(error)),
     });
   };
 

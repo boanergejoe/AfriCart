@@ -47,14 +47,15 @@ PESAPAL_IPN_ID=<REGISTERED_IPN_ID>
 PESAPAL_CALLBACK_URL=https://<public-backend-domain>/api/payment/pesapal/callback
 ```
 
-Deploy the backend with a public HTTPS URL before registering the IPN. The browser callback is
-served by the backend, while the public IPN endpoint confirms payments when customers close the
+Deploy the backend with a public HTTPS URL before registering the IPN. PesaPal calls the backend
+callback URL, which verifies the transaction and then redirects the customer to the storefront's
+`/payment/callback` screen. The public IPN endpoint confirms payments even when customers close the
 browser. Run `npm run pesapal:register-ipn` from `backend/`; it registers the IPN and saves the
 returned ID directly to `backend/.env` without printing it. Use PesaPal sandbox credentials for
 testing and switch to live credentials only when ready for real charges. The backend uses MongoDB
 transactions for idempotent payment, stock, and cart updates, so the database must support
 transactions (MongoDB Atlas does). Set `MOBILE_CLIENT_URL` to the customer-facing mobile web
-origin so its API requests pass CORS.
+origin so its API requests pass CORS and payment callbacks can return to the storefront.
 
 For a Vercel-hosted backend, add the same `PESAPAL_*` values to the Vercel project's server-side
 environment settings and redeploy; local `backend/.env` values do not automatically reach Vercel.
@@ -76,6 +77,15 @@ The command prompts for the password without echoing it and prints `ADMIN_PASSWO
 Clerk account. Never commit the generated values. Rotating the session secret signs out existing
 admin sessions.
 
+### Customer accounts
+
+Customers sign up and sign in on the storefront with Clerk, using the same
+`EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` already listed for the mobile app. The web sign-in screen
+supports email/password accounts plus any social providers enabled in the Clerk Dashboard. Enable
+**Email address** and **Password** under **User & authentication → Sign-in & sign-up options** so
+customers can register without a social account. Never use the admin credentials for customer
+accounts.
+
 ---
 
 ## 🧪 `.env` Setup
@@ -88,7 +98,6 @@ PORT=3000
 
 DB_URL=<YOUR_DB_URL>
 
-CLERK_PUBLISHABLE_KEY=<YOUR_CLERK_PUBLISHABLE_KEY>
 CLERK_SECRET_KEY=<YOUR_CLERK_SECRET_KEY>
 
 INNGEST_SIGNING_KEY=<YOUR_INNGEST_SIGNING_KEY>
@@ -191,15 +200,16 @@ time.
 Configure these in the backend project's Vercel settings. Do not commit credentials or put backend
 secrets in `VITE_*` variables.
 
-- Required for the API: `DB_URL`, `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` (customer mobile
-  auth), `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`, `CLIENT_URL`, and
-  `MOBILE_CLIENT_URL` if the mobile app calls the API.
+- Required for the API: `DB_URL`, `CLERK_SECRET_KEY` (customer auth), `ADMIN_EMAIL`,
+  `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`, `CLIENT_URL`, and `MOBILE_CLIENT_URL` for the
+  customer storefront's CORS and payment callback redirect.
 - For Inngest: `INNGEST_SIGNING_KEY`.
 - For product image uploads: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and
   `CLOUDINARY_API_SECRET`.
 - For the only payment provider, PesaPal: `PESAPAL_ENV`, `PESAPAL_CONSUMER_KEY`,
   `PESAPAL_CONSUMER_SECRET`, `PESAPAL_CURRENCY`, `PESAPAL_IPN_URL`, `PESAPAL_IPN_ID`, and
-  `PESAPAL_CALLBACK_URL`.
+  `PESAPAL_CALLBACK_URL`. `PESAPAL_IPN_NOTIFICATION_TYPE` is optional and defaults to `GET` when
+  registering a new IPN.
 
 Use the backend deployment origin in `PESAPAL_IPN_URL`, ending in
 `/api/payment/pesapal/ipn`. `PESAPAL_CALLBACK_URL` must be the public backend callback URL, ending

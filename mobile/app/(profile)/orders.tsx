@@ -1,3 +1,4 @@
+import { showMessage } from "@/lib/alerts";
 import palette from "@/lib/theme";
 import { EmptyState } from "@/components/EmptyState";
 import { ErrorState } from "@/components/ErrorState";
@@ -17,7 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Alert, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 function OrdersScreen() {
   const { data: orders, isLoading, isError, refetch } = useOrders();
@@ -46,7 +47,7 @@ function OrdersScreen() {
     // check if all products have been rated
     const allRated = Object.values(productRatings).every((rating) => rating > 0);
     if (!allRated) {
-      Alert.alert("Error", "Please rate all products");
+      showMessage("Error", "Please rate all products");
       return;
     }
 
@@ -61,12 +62,12 @@ function OrdersScreen() {
         })
       );
 
-      Alert.alert("Success", "Thank you for rating all products!");
+      showMessage("Success", "Thank you for rating all products!");
       setShowRatingModal(false);
       setSelectedOrder(null);
       setProductRatings({});
     } catch (error) {
-      Alert.alert("Could not submit rating", getErrorMessage(error));
+      showMessage("Could not submit rating", getErrorMessage(error));
     }
   };
 
@@ -116,7 +117,7 @@ function OrdersScreen() {
                   <View className="flex-row mb-4">
                     <View className="relative">
                       <Image
-                        source={firstImage}
+                        source={firstImage ? { uri: firstImage } : undefined}
                         style={{ height: 80, width: 80, borderRadius: 8 }}
                         contentFit="cover"
                       />
