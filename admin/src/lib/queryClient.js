@@ -1,6 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 
-// A single client is shared by the app, the Clerk token provider and the sign-out cleanup.
+// A single client is shared by the app, the admin auth provider and the sign-out cleanup.
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

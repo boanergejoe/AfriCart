@@ -1,8 +1,9 @@
 import { ShieldXIcon } from "lucide-react";
-import { useAuth } from "@clerk/react";
+
+import { useAdminAuth } from "../lib/adminAuth.js";
 
 function AccessDeniedPage() {
-  const { signOut } = useAuth();
+  const { signOut } = useAdminAuth();
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-base-200 p-6">
@@ -13,17 +14,11 @@ function AccessDeniedPage() {
           </div>
           <h1 className="card-title mt-2 text-2xl">Access denied</h1>
           <p className="text-sm text-base-content/70">
-            This dashboard is restricted to the store administrator. Sign in with the configured
-            admin account to continue.
+            Your session is no longer valid. Sign in again with the configured admin account to
+            continue.
           </p>
           <div className="card-actions mt-4 justify-center">
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => {
-                void signOut();
-              }}
-            >
+            <button type="button" className="btn btn-primary" onClick={signOut}>
               Use another account
             </button>
           </div>

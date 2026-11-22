@@ -1,11 +1,11 @@
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router";
-import { useAuth } from "@clerk/react";
 import { useQuery } from "@tanstack/react-query";
 
 import PageLoader from "./components/PageLoader.jsx";
 import DashboardLayout from "./layouts/DashboardLayout.jsx";
 import { adminApi } from "./lib/api.js";
+import { useAdminAuth } from "./lib/adminAuth.js";
 
 const LoginPage = lazy(() => import("./pages/LoginPage.jsx"));
 const DashboardPage = lazy(() => import("./pages/DashboardPage.jsx"));
@@ -29,21 +29,19 @@ function AdminArea() {
 }
 
 function App() {
-  const { isSignedIn, isLoaded } = useAuth();
-
-  if (!isLoaded) return <PageLoader />;
+  const { isAuthenticated } = useAdminAuth();
 
   return (
     <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route
           path="/login"
-          element={isSignedIn ? <Navigate to="/dashboard" replace /> : <LoginPage />}
+          element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LoginPage />}
         />
 
         <Route
           path="/"
-          element={isSignedIn ? <AdminArea /> : <Navigate to="/login" replace />}
+          element={isAuthenticated ? <AdminArea /> : <Navigate to="/login" replace />}
         >
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />

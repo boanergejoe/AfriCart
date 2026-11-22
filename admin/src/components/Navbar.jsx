@@ -1,10 +1,12 @@
-import { UserButton } from "@clerk/react";
+import { LogOutIcon, PanelLeftIcon } from "lucide-react";
 import { useLocation } from "react-router";
-import { PanelLeftIcon } from "lucide-react";
+
+import { useAdminAuth } from "../lib/adminAuth.js";
 import { getPageTitle } from "../lib/navigation.js";
 
 function Navbar() {
   const { pathname } = useLocation();
+  const { email, signOut } = useAdminAuth();
 
   return (
     <header className="navbar sticky top-0 z-30 min-h-16 gap-2 border-b border-base-300 bg-base-100/95 px-4 backdrop-blur sm:px-6">
@@ -24,8 +26,16 @@ function Navbar() {
       </div>
 
       <div className="flex items-center gap-3">
-        <span className="hidden text-sm font-medium sm:inline">Administrator</span>
-        <UserButton />
+        <span className="hidden max-w-48 truncate text-sm font-medium lg:inline">{email}</span>
+        <button
+          type="button"
+          className="btn btn-ghost btn-sm"
+          onClick={signOut}
+          aria-label="Sign out"
+        >
+          <LogOutIcon className="size-4" aria-hidden="true" />
+          <span className="hidden sm:inline">Sign out</span>
+        </button>
       </div>
     </header>
   );

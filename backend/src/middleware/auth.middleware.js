@@ -1,6 +1,7 @@
 import { clerkClient, getAuth, requireAuth } from "@clerk/express";
 import { User } from "../models/user.model.js";
 import { ENV } from "../config/env.js";
+import { verifyAdminToken } from "../utils/admin-auth.js";
 
 async function findOrCreateUser(clerkId) {
   const existingUser = await User.findOne({ clerkId });
@@ -65,15 +66,20 @@ export const protectRoute = [
   },
 ];
 
-export const adminOnly = (req, res, next) => {
-  if (!req.user) {
-    return res.status(401).json({ message: "Unauthorized - user not found" });
+export const adminAuth = (req, res, next) => {
+  if (!ENV.ADMIN_EMAIL || !ENV.ADMIN_SESSION_SECRET) {
+    return res.status(503).json({ message: "Admin login is not configured." });
   }
 
-  const adminEmail = ENV.ADMIN_EMAIL?.trim().toLowerCase();
-  if (!adminEmail || req.user.email?.trim().toLowerCase() !== adminEmail) {
-    return res.status(403).json({ message: "Forbidden - admin access only" });
+  const authorization = req.get("authorization") || "";
+  const match = /^Bearer\s+(.+)$/i.exec(authorization);
+  const tokenEmail = match ? verifyAdminToken(match[1]) : null;
+  const configuredEmail = ENV.ADMIN_EMAIL.trim().toLowerCase();
+
+  if (!tokenEmail || tokenEmail !== configuredEmail) {
+    return res.status(401).json({ message: "Unauthorized - sign in again" });
   }
 
+  req.admin = { email: tokenEmail };
   next();
 };

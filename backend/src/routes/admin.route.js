@@ -9,13 +9,16 @@ import {
   updateProduct,
   deleteProduct,
 } from "../controllers/admin.controller.js";
-import { adminOnly, protectRoute } from "../middleware/auth.middleware.js";
+import { loginAdmin } from "../controllers/admin-auth.controller.js";
+import { adminAuth } from "../middleware/auth.middleware.js";
 import { upload } from "../middleware/multer.middleware.js";
 
 const router = Router();
 
-// Every route below requires an authenticated Clerk user with the configured admin email.
-router.use(protectRoute, adminOnly);
+router.post("/login", loginAdmin);
+
+// Every route below requires the admin dashboard's signed session token.
+router.use(adminAuth);
 
 // Lets the dashboard verify access explicitly instead of rendering an empty shell on 403.
 router.get("/access", (_req, res) => res.status(200).json({ allowed: true }));

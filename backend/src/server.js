@@ -76,7 +76,13 @@ app.use((error, _req, res, _next) => {
 });
 
 const startServer = async () => {
-  const missing = ["DB_URL", "CLERK_SECRET_KEY", "ADMIN_EMAIL"].filter((key) => !ENV[key]);
+  const missing = [
+    "DB_URL",
+    "CLERK_SECRET_KEY",
+    "ADMIN_EMAIL",
+    "ADMIN_PASSWORD_HASH",
+    "ADMIN_SESSION_SECRET",
+  ].filter((key) => !ENV[key]);
   if (missing.length) throw new Error(`Missing required environment variables: ${missing.join(", ")}`);
 
   await connectDB();

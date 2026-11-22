@@ -1,12 +1,13 @@
-import { useUser } from "@clerk/react";
-import { ShoppingBagIcon } from "lucide-react";
+import { ShoppingBagIcon, UserCircleIcon } from "lucide-react";
 import { Link, useLocation } from "react-router";
+
+import { useAdminAuth } from "../lib/adminAuth.js";
 import { NAVIGATION } from "../lib/navigation.js";
-import ImageWithFallback from "./ImageWithFallback.jsx";
 
 function Sidebar() {
   const { pathname } = useLocation();
-  const { user } = useUser();
+  const { email } = useAdminAuth();
+  const initial = email ? email.charAt(0).toUpperCase() : "A";
 
   return (
     <aside className="drawer-side z-40">
@@ -50,17 +51,16 @@ function Sidebar() {
         </nav>
 
         <div className="flex items-center gap-3 border-t border-base-200 px-5 py-4">
-          <ImageWithFallback
-            src={user?.imageUrl}
-            alt={user?.fullName || user?.primaryEmailAddress?.emailAddress || "Admin"}
-            rounded
-            className="size-10 shrink-0 object-cover"
-          />
+          <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
+            {email ? (
+              <span className="text-sm font-semibold">{initial}</span>
+            ) : (
+              <UserCircleIcon className="size-6" aria-hidden="true" />
+            )}
+          </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold">{user?.fullName || "Administrator"}</p>
-            <p className="truncate text-xs text-base-content/60">
-              {user?.primaryEmailAddress?.emailAddress}
-            </p>
+            <p className="truncate text-sm font-semibold">Administrator</p>
+            <p className="truncate text-xs text-base-content/60">{email}</p>
           </div>
         </div>
       </div>

@@ -5,7 +5,7 @@
 ✨ **Highlights:**
 
 - 📱 AfriCart mobile storefront (React Native + Expo)
-- 🔐 Secure Authentication with Clerk (Google & Apple sign-in)
+- 🔐 Clerk social sign-in for customers; custom password login for the admin dashboard
 - 🛒 Cart, Favorites, Checkout & Orders Flow
 - 💳 PesaPal API checkout with IPN-based payment confirmation
 - 🗺️ Addresses System
@@ -60,9 +60,21 @@ For a Vercel-hosted backend, add the same `PESAPAL_*` values to the Vercel proje
 environment settings and redeploy; local `backend/.env` values do not automatically reach Vercel.
 Never add consumer credentials to `EXPO_PUBLIC_*` variables.
 
-Password length is managed by Clerk, not by this repository. Clerk enforces a NIST-aligned minimum
-of 8 characters for password sign-in, which already satisfies a 5-character minimum. Password rules
-are configured in the Clerk Dashboard under **User & authentication → Password**.
+### Admin password login
+
+The admin dashboard uses its own password login, separate from Clerk customer accounts. Passwords
+of **at least 5 characters** are accepted. Generate the stored hash and a session secret from
+`backend/`:
+
+```bash
+npm run admin:credentials
+```
+
+The command prompts for the password without echoing it and prints `ADMIN_PASSWORD_HASH` and
+`ADMIN_SESSION_SECRET`. Add both to `backend/.env` (or the backend Vercel project), set
+`ADMIN_EMAIL` to the same address, and restart/redeploy the backend. This address no longer needs a
+Clerk account. Never commit the generated values. Rotating the session secret signs out existing
+admin sessions.
 
 ---
 
@@ -86,6 +98,8 @@ CLOUDINARY_API_SECRET=<YOUR_CLOUDINARY_API_SECRET>
 CLOUDINARY_CLOUD_NAME=<YOUR_CLOUDINARY_CLOUD_NAME>
 
 ADMIN_EMAIL=<YOUR_ADMIN_EMAIL>
+ADMIN_PASSWORD_HASH=<SCRYPT_HASH_FROM_ADMIN_CREDENTIALS_SCRIPT>
+ADMIN_SESSION_SECRET=<RANDOM_SECRET_FROM_ADMIN_CREDENTIALS_SCRIPT>
 
 CLIENT_URL=http://localhost:5173
 MOBILE_CLIENT_URL=https://<public-mobile-web-domain>
@@ -105,7 +119,6 @@ PESAPAL_CALLBACK_URL=https://<public-backend-domain>/api/payment/pesapal/callbac
 ### 🟩 Admin Dashboard (/admin)
 
 ```bash
-VITE_CLERK_PUBLISHABLE_KEY=<YOUR_CLERK_PUBLISHABLE_KEY>
 VITE_API_URL=http://localhost:3000/api
 
 VITE_SENTRY_DSN=<YOUR_SENTRY_DSN>
@@ -151,7 +164,6 @@ single-page app; the mobile web app is exported as static files by Expo.
    Output Directory.
 4. Add these environment variables in Project Settings:
 
-   - `VITE_CLERK_PUBLISHABLE_KEY` — the Clerk publishable key.
    - `VITE_API_URL` — the backend URL followed by `/api`, for example
      `https://<backend-project>.vercel.app/api`.
    - `VITE_SENTRY_DSN` — optional Sentry DSN.
@@ -179,8 +191,9 @@ time.
 Configure these in the backend project's Vercel settings. Do not commit credentials or put backend
 secrets in `VITE_*` variables.
 
-- Required for the API: `DB_URL`, `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `ADMIN_EMAIL`,
-  `CLIENT_URL`, and `MOBILE_CLIENT_URL` if the mobile app calls the API.
+- Required for the API: `DB_URL`, `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` (customer mobile
+  auth), `ADMIN_EMAIL`, `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`, `CLIENT_URL`, and
+  `MOBILE_CLIENT_URL` if the mobile app calls the API.
 - For Inngest: `INNGEST_SIGNING_KEY`.
 - For product image uploads: `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and
   `CLOUDINARY_API_SECRET`.
