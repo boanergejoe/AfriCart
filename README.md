@@ -125,10 +125,9 @@ or a deployed HTTPS backend.
 
 ## 🚀 Deploy on Vercel
 
-Deploy the backend and admin as **two separate Vercel projects** from this repository. The backend
-is an Express app (`backend/src/server.js`); Vercel detects and serves it as an Express deployment.
-The admin is a Vite single-page app. No Vercel-specific runtime dependency or custom backend build
-command is required.
+Deploy the backend, admin, and mobile web app as **three separate Vercel projects** from this
+repository. The backend is an Express app (`backend/src/server.js`); the admin is a Vite
+single-page app; the mobile web app is exported as static files by Expo.
 
 ### Backend API project
 
@@ -155,6 +154,17 @@ command is required.
 
 5. Deploy. The [admin Vercel config](admin/vercel.json) rewrites browser routes to the Vite entry
    point so routes such as `/login` and `/orders` work when opened directly or refreshed.
+
+### Mobile web project
+
+1. Import the same repository as a third Vercel project.
+2. Set **Root Directory** to `mobile` and Framework Preset to **Other** (not Vite). Set Build
+   Command to `npm run build`, Install Command to `npm ci`, and Output Directory to `dist`.
+   The [mobile Vercel config](mobile/vercel.json) pins these settings and sets `framework` to
+   `null`, which prevents Vercel from auto-detecting Vite and running `vite build`.
+3. Add `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` and `EXPO_PUBLIC_API_URL` in Project Settings; set the
+   latter to the deployed backend origin followed by `/api`. `EXPO_PUBLIC_SENTRY_DSN` is optional.
+4. Deploy. Expo generates static route files for the web app, including the payment callback page.
 
 Add the environment variables to the Vercel environments where they are needed (Production,
 Preview, and Development), then redeploy after changing them. Vite variables are embedded at build

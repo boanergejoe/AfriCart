@@ -30,6 +30,7 @@ TanStack Query. It talks to the shared Express API in `../backend`.
 | `npm start` | Start the Expo development server. |
 | `npm run android` / `npm run ios` | Run a native development build. |
 | `npm run web` | Start the web app. |
+| `npm run build` | Export the static web app to `dist/` (used by Vercel). |
 | `npm run lint` | Run ESLint over the source. |
 | `npx tsc --noEmit` | Type-check the TypeScript source. |
 
