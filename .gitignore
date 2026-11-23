@@ -9,3 +9,9 @@ node_modules
 
 # Security-sensitive account recovery artifacts must never be committed
 *recovery-codes*
+
+# Tooling / generated artifacts
+.vercel/
+*.tsbuildinfo
+*.log
+.DS_Store

@@ -1,4 +1,5 @@
 import { useSSO } from "@clerk/expo";
+import * as Sentry from "@sentry/react-native";
 import { useState } from "react";
 
 import { showMessage } from "@/lib/alerts";
@@ -16,7 +17,7 @@ function useSocialAuth() {
         await setActive({ session: createdSessionId });
       }
     } catch (error) {
-      console.log("💥 Error in social auth:", error);
+      Sentry.captureException(error);
       const provider = strategy === "oauth_google" ? "Google" : "Apple";
       showMessage("Error", `Failed to sign in with ${provider}. Please try again.`);
     } finally {
