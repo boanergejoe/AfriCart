@@ -26,6 +26,13 @@
 
 ---
 
+### 📚 Guides
+
+- [User Guide](docs/USER_GUIDE.md) — how customers and admins use the storefront and console.
+- [Technical Guide](docs/TECHNICAL_GUIDE.md) — architecture, setup, environment variables, API, and deployment.
+
+---
+
 ### Automated PesaPal checkout
 
 Checkout uses the authenticated user's server-side cart and product prices. The backend computes

@@ -30,8 +30,9 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
-.env*.local
+# local env files (never commit real credentials; .env.example is the only tracked template)
+.env*
+!.env.example
 
 # typescript
 *.tsbuildinfo
@@ -41,5 +42,3 @@ app-example
 # generated native folders
 /ios
 /android
-
-.env.local
