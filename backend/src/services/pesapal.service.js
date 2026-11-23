@@ -1,4 +1,4 @@
-import { ENV } from "../config/env.js";
+import { DEPLOYED_API_URL, ENV } from "../config/env.js";
 
 const API_BASE_URLS = {
   sandbox: "https://cybqa.pesapal.com/pesapalv3",
@@ -48,10 +48,9 @@ export function getPesapalCheckoutSettings() {
     throw new PesapalConfigurationError("PESAPAL_IPN_ID is not configured.");
   }
 
-  const callbackUrlValue = ENV.PESAPAL_CALLBACK_URL?.trim();
-  if (!callbackUrlValue) {
-    throw new PesapalConfigurationError("PESAPAL_CALLBACK_URL is not configured.");
-  }
+  const callbackUrlValue =
+    ENV.PESAPAL_CALLBACK_URL?.trim() ||
+    `${DEPLOYED_API_URL.replace(/\/$/, "")}/payment/pesapal/callback`;
 
   let callbackUrl;
   try {

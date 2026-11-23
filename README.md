@@ -122,17 +122,18 @@ ADMIN_EMAIL=<YOUR_ADMIN_EMAIL>
 ADMIN_PASSWORD_HASH=<SCRYPT_HASH_FROM_ADMIN_CREDENTIALS_SCRIPT>
 ADMIN_SESSION_SECRET=<RANDOM_SECRET_FROM_ADMIN_CREDENTIALS_SCRIPT>
 
-CLIENT_URL=http://localhost:5173
-MOBILE_CLIENT_URL=https://<public-mobile-web-domain>
+# Production Vercel origins (use localhost origins for local development)
+CLIENT_URL=https://afri-cart-cfe2.vercel.app
+MOBILE_CLIENT_URL=https://africart-mobile-five.vercel.app
 
 # PesaPal API checkout (credentials stay on the backend)
 PESAPAL_ENV=sandbox
 PESAPAL_CONSUMER_KEY=<YOUR_PESAPAL_CONSUMER_KEY>
 PESAPAL_CONSUMER_SECRET=<YOUR_PESAPAL_CONSUMER_SECRET>
 PESAPAL_CURRENCY=USD
-PESAPAL_IPN_URL=https://<public-backend-domain>/api/payment/pesapal/ipn
+PESAPAL_IPN_URL=https://afri-cart-two.vercel.app/api/payment/pesapal/ipn
 PESAPAL_IPN_ID=<REGISTERED_IPN_ID>
-PESAPAL_CALLBACK_URL=https://<public-backend-domain>/api/payment/pesapal/callback
+PESAPAL_CALLBACK_URL=https://afri-cart-two.vercel.app/api/payment/pesapal/callback
 ```
 
 ---
@@ -140,7 +141,8 @@ PESAPAL_CALLBACK_URL=https://<public-backend-domain>/api/payment/pesapal/callbac
 ### 🟩 Admin Dashboard (/admin)
 
 ```bash
-VITE_API_URL=http://localhost:3000/api
+# Production Vercel build (local development can use http://localhost:3000/api)
+VITE_API_URL=https://afri-cart-two.vercel.app/api
 
 VITE_SENTRY_DSN=<YOUR_SENTRY_DSN>
 ```
@@ -151,7 +153,7 @@ VITE_SENTRY_DSN=<YOUR_SENTRY_DSN>
 
 ```bash
 EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY=<YOUR_CLERK_PUBLISHABLE_KEY>
-EXPO_PUBLIC_API_URL=https://<public-backend-domain>/api
+EXPO_PUBLIC_API_URL=https://afri-cart-two.vercel.app/api
 
 # Optional
 EXPO_PUBLIC_SENTRY_DSN=<YOUR_SENTRY_DSN>
@@ -166,6 +168,19 @@ or a deployed HTTPS backend.
 Deploy the backend, admin, and mobile web app as **three separate Vercel projects** from this
 repository. The backend is an Express app (`backend/src/server.js`); the admin is a Vite
 single-page app; the mobile web app is exported as static files by Expo.
+
+The current production URLs are:
+
+| App | URL |
+| --- | --- |
+| Backend API | `https://afri-cart-two.vercel.app/` |
+| Customer storefront | `https://africart-mobile-five.vercel.app/` |
+| Admin console | `https://afri-cart-cfe2.vercel.app/login` |
+
+These non-secret URLs are also wired as defaults in `backend/src/config/env.js` and in the
+`buildCommand` values in `admin/vercel.json` and `mobile/vercel.json`, so each app builds against
+the correct API and the backend allows both browser origins. Runtime secrets such as database,
+Clerk, Cloudinary, and PesaPal credentials must still be set in the Vercel dashboard.
 
 ### Backend API project
 

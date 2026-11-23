@@ -4,7 +4,7 @@ import cors from "cors";
 import { clerkMiddleware } from "@clerk/express";
 import { serve } from "inngest/express";
 
-import { ENV } from "./config/env.js";
+import { DEPLOYED_ADMIN_URL, DEPLOYED_STOREFRONT_URL, ENV } from "./config/env.js";
 import { connectDB } from "./config/db.js";
 import { functions, inngest } from "./config/inngest.js";
 
@@ -19,14 +19,28 @@ import paymentRoutes from "./routes/payment.route.js";
 const app = express();
 app.disable("x-powered-by");
 
+// Browsers send only scheme + host + port in Origin, so compare normalized origins.
+const normalizeOrigin = (value) => {
+  if (!value) return null;
+  try {
+    return new URL(value).origin;
+  } catch {
+    return value.replace(/\/+$/, "");
+  }
+};
+
 const allowedOrigins = new Set(
   [
     ENV.CLIENT_URL,
     ENV.MOBILE_CLIENT_URL,
+    DEPLOYED_ADMIN_URL,
+    DEPLOYED_STOREFRONT_URL,
     ...(ENV.NODE_ENV === "production"
       ? []
       : ["http://localhost:8081", "http://127.0.0.1:8081", "http://localhost:5173"]),
-  ].filter(Boolean)
+  ]
+    .map(normalizeOrigin)
+    .filter(Boolean)
 );
 
 app.use(

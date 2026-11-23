@@ -1,4 +1,6 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "VITE_API_URL=https://afri-cart-two.vercel.app/api npm run build",
   "rewrites": [
     {
       "source": "/((?!assets/).*)",

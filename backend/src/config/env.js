@@ -24,3 +24,9 @@ export const ENV = {
   PESAPAL_CALLBACK_URL: process.env.PESAPAL_CALLBACK_URL,
   PESAPAL_CURRENCY: process.env.PESAPAL_CURRENCY || "USD",
 };
+
+// Public deployment origins. They are not secrets; keeping them here means the
+// apps still communicate if the corresponding Vercel env vars are not set.
+export const DEPLOYED_ADMIN_URL = "https://afri-cart-cfe2.vercel.app";
+export const DEPLOYED_STOREFRONT_URL = "https://africart-mobile-five.vercel.app";
+export const DEPLOYED_API_URL = "https://afri-cart-two.vercel.app/api";
