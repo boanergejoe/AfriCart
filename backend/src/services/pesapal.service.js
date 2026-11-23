@@ -6,9 +6,6 @@ const API_BASE_URLS = {
 };
 
 const REQUEST_TIMEOUT_MS = 15000;
-let cachedToken;
-let cachedTokenExpiresAt = 0;
-let cachedTokenBaseUrl;
 
 export class PesapalConfigurationError extends Error {
   constructor(message) {
@@ -78,7 +75,7 @@ export function getPesapalCheckoutSettings() {
   };
 }
 
-async function requestJson(url, options) {
+async function requestJson(url, options, allowProviderErrors = false) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   let response;
@@ -105,7 +102,16 @@ async function requestJson(url, options) {
   }
 
   const apiStatus = data?.status == null ? "" : String(data.status);
-  if (!response.ok || data?.error || (apiStatus && apiStatus !== "200")) {
+  const hasProviderError =
+    data?.error != null &&
+    (typeof data.error !== "object" ||
+      Object.keys(data.error).length > 0 ||
+      String(data.error).length > 0);
+  if (
+    !response.ok ||
+    (hasProviderError && !allowProviderErrors) ||
+    (!apiStatus && response.status !== 200)
+  ) {
     const message = `PesaPal API request failed (HTTP ${response.status}).`;
     throw new PesapalApiError(message, response.status >= 400 ? response.status : 502);
   }
@@ -114,14 +120,6 @@ async function requestJson(url, options) {
 }
 
 async function getAccessToken(configuration) {
-  if (
-    cachedToken &&
-    cachedTokenBaseUrl === configuration.baseUrl &&
-    cachedTokenExpiresAt > Date.now() + 15000
-  ) {
-    return cachedToken;
-  }
-
   const tokenResponse = await requestJson(`${configuration.baseUrl}/api/Auth/RequestToken`, {
     method: "POST",
     headers: {
@@ -137,28 +135,26 @@ async function getAccessToken(configuration) {
   if (typeof tokenResponse.token !== "string" || !tokenResponse.token) {
     throw new PesapalApiError("PesaPal did not return an access token.", 502);
   }
-
-  const expiry = Date.parse(tokenResponse.expiryDate);
-  cachedToken = tokenResponse.token;
-  cachedTokenExpiresAt = Number.isFinite(expiry) ? expiry : Date.now() + 4 * 60 * 1000;
-  cachedTokenBaseUrl = configuration.baseUrl;
-
-  return cachedToken;
+  return tokenResponse.token;
 }
 
-async function authenticatedRequest(path, options = {}) {
+async function authenticatedRequest(path, options = {}, allowProviderErrors = false) {
   const configuration = getApiConfiguration();
   const token = await getAccessToken(configuration);
 
-  return requestJson(`${configuration.baseUrl}${path}`, {
-    ...options,
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      ...options.headers,
+  return requestJson(
+    `${configuration.baseUrl}${path}`,
+    {
+      ...options,
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+        ...options.headers,
+      },
     },
-  });
+    allowProviderErrors
+  );
 }
 
 export async function submitPesapalOrder(order) {
@@ -172,7 +168,8 @@ export async function getPesapalTransactionStatus(orderTrackingId) {
   const query = new URLSearchParams({ orderTrackingId });
   return authenticatedRequest(
     `/api/Transactions/GetTransactionStatus?${query.toString()}`,
-    { method: "GET" }
+    { method: "GET" },
+    true
   );
 }
 

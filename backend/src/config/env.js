@@ -35,3 +35,20 @@ export const ENV = {
 export const DEPLOYED_ADMIN_URL = "https://afri-cart-cfe2.vercel.app";
 export const DEPLOYED_STOREFRONT_URL = "https://africart-mobile-five.vercel.app";
 export const DEPLOYED_API_URL = "https://afri-cart-two.vercel.app/api";
+
+export function getStorefrontOrigin() {
+  if (process.env.VERCEL === "1" || process.env.NODE_ENV === "production") {
+    return DEPLOYED_STOREFRONT_URL;
+  }
+
+  const configuredOrigin = ENV.MOBILE_CLIENT_URL?.trim();
+  if (!configuredOrigin) return DEPLOYED_STOREFRONT_URL;
+
+  try {
+    const url = new URL(configuredOrigin);
+    if (!["http:", "https:"].includes(url.protocol)) return DEPLOYED_STOREFRONT_URL;
+    return url.origin;
+  } catch {
+    return DEPLOYED_STOREFRONT_URL;
+  }
+}

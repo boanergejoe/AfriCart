@@ -9,6 +9,12 @@ import {
 
 const router = Router();
 
+router.use((_req, res, next) => {
+  res.set("Cache-Control", "no-store, max-age=0");
+  res.set("Pragma", "no-cache");
+  next();
+});
+
 router.post("/pesapal/checkout", protectRoute, createPesapalCheckout);
 router.get("/pesapal/status/:merchantReference", protectRoute, getPesapalPaymentStatus);
 router.get("/pesapal/callback", handlePesapalCallback);

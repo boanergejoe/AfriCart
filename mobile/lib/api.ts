@@ -7,7 +7,10 @@ if (!configuredApiUrl) {
 
 const api = axios.create({
   baseURL: configuredApiUrl.replace(/\/$/, ""),
-  headers: { "Content-Type": "application/json" },
+  headers: {
+    "Content-Type": "application/json",
+    "Cache-Control": "no-store",
+  },
   timeout: 20_000,
 });
 

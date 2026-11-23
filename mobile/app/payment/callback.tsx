@@ -70,7 +70,10 @@ const PaymentCallbackScreen = () => {
         for (let attempt = 0; attempt < MAX_STATUS_CHECKS; attempt += 1) {
           const { data } = await api.get<PaymentStatusResponse>(
             `/payment/pesapal/status/${encodeURIComponent(merchantReference)}`,
-            { params: trackingId ? { orderTrackingId: trackingId } : undefined }
+            {
+              params: trackingId ? { orderTrackingId: trackingId } : undefined,
+              headers: { "Cache-Control": "no-store", Pragma: "no-cache" },
+            }
           );
           if (abortController.signal.aborted) return;
 

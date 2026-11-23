@@ -73,6 +73,18 @@ test("keeps incomplete transactions pending unless PesaPal reports a terminal st
     ),
     "invalid"
   );
+  assert.equal(
+    normalizePesapalTransaction(
+      {
+        merchant_reference: "AFRI-123",
+        status_code: 0,
+        payment_status_description: "INVALID",
+        error: { code: "payment_details_not_found", message: "Pending Payment" },
+      },
+      expected
+    ),
+    "pending"
+  );
 });
 
 test("clears a cart only when product identities and quantities still match the order", () => {

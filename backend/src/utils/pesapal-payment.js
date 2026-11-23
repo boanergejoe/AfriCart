@@ -24,6 +24,13 @@ export function normalizePesapalTransaction(transaction, expected) {
   if (statusCode === 2) return "failed";
   if (statusCode === 3) return "reversed";
   if (statusCode === 0) {
+    const providerErrorCode = String(transaction.error?.code || "").toLowerCase();
+    if (
+      providerErrorCode === "payment_details_not_found" ||
+      providerErrorCode.includes("pending")
+    ) {
+      return "pending";
+    }
     const description = String(transaction.payment_status_description || "").toLowerCase();
     if (description.includes("invalid")) return "invalid";
     if (description.includes("failed")) return "failed";

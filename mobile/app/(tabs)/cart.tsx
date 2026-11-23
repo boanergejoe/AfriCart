@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { Image } from "expo-image";
-import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import {
   ActivityIndicator,
@@ -20,7 +19,6 @@ import LoadingState from "@/components/LoadingState";
 import OrderSummary from "@/components/OrderSummary";
 import SafeScreen from "@/components/SafeScreen";
 import useCart from "@/hooks/useCart";
-import { useAddresses } from "@/hooks/useAddressess";
 import { confirmAction, showMessage } from "@/lib/alerts";
 import { useApi } from "@/lib/api";
 import palette from "@/lib/theme";
@@ -56,10 +54,8 @@ const CartScreen = () => {
     removeFromCart,
     updateQuantity,
   } = useCart();
-  const { addresses, isLoading: addressesLoading, isError: addressesError } = useAddresses();
   const api = useApi();
   const queryClient = useQueryClient();
-  const router = useRouter();
 
   const [addressModalVisible, setAddressModalVisible] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(false);
@@ -111,16 +107,6 @@ const CartScreen = () => {
 
   const handleCheckout = () => {
     if (cartItems.length === 0 || paymentLoading) return;
-    if (addressesLoading || addressesError) {
-      showMessage("Addresses unavailable", "Please refresh and try checkout again.");
-      return;
-    }
-    if (addresses.length === 0) {
-      showMessage("Shipping address required", "Add a shipping address before checking out.");
-      router.push("/(profile)/addresses");
-      return;
-    }
-
     setAddressModalVisible(true);
   };
 
@@ -156,7 +142,8 @@ const CartScreen = () => {
 
       for (let attempt = 0; attempt < MAX_STATUS_CHECKS; attempt += 1) {
         const { data } = await api.get<PesapalStatusResponse>(
-          `/payment/pesapal/status/${encodeURIComponent(checkout.merchantReference)}`
+          `/payment/pesapal/status/${encodeURIComponent(checkout.merchantReference)}`,
+          { headers: { "Cache-Control": "no-store", Pragma: "no-cache" } }
         );
         const paymentStatus = data.paymentStatus;
 

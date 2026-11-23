@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import mongoose from "mongoose";
 
-import { DEPLOYED_STOREFRONT_URL, ENV } from "../config/env.js";
+import { ENV, getStorefrontOrigin } from "../config/env.js";
 import { Cart } from "../models/cart.model.js";
 import { Order } from "../models/order.model.js";
 import { Product } from "../models/product.model.js";
@@ -534,7 +534,7 @@ function paymentCallbackPage(status) {
 }
 
 function storefrontCallbackUrl(status, trackingId, merchantReference) {
-  const storefrontOrigin = ENV.MOBILE_CLIENT_URL?.trim() || DEPLOYED_STOREFRONT_URL;
+  const storefrontOrigin = getStorefrontOrigin();
 
   try {
     const url = new URL(storefrontOrigin);
