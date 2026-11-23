@@ -82,6 +82,10 @@ The script prompts for a password (minimum 5 characters) without echoing it and 
 to the sign-in address. Store only the hash and session secret — never the raw password. Changing
 `ADMIN_SESSION_SECRET` signs out all existing admins.
 
+Changing a password in the Clerk dashboard only changes **customer** sign-in. It has no effect on
+admin login: regenerate `ADMIN_PASSWORD_HASH` with the script, set it on the API's Vercel project,
+and redeploy the API.
+
 ### 2.3 PesaPal IPN
 
 Deploy/serve the backend over public HTTPS first, then from `backend/` run:

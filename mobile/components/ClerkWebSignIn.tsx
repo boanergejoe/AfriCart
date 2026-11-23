@@ -33,13 +33,17 @@ const ClerkWebSignIn = () => (
         fallback={<BrandLoader label="Preparing secure sign-in…" />}
         appearance={clerkAppearance}
       />
-      {/* Clerk's built-in link can be hidden by dashboard settings; always offer a way in. */}
-      <Text className="text-text-secondary text-center text-sm" style={{ marginTop: 8 }}>
-        New to AfriCart?{" "}
-        <Link href="/sign-up" className="text-primary font-semibold">
-          Create an account
+      {/* Clerk's built-in link can be hidden by dashboard settings; always offer a clear way in. */}
+      <View className="mt-3 w-full items-center gap-2">
+        <Text className="text-text-secondary text-center text-sm">New to AfriCart?</Text>
+        <Link
+          href="/sign-up"
+          className="bg-primary w-full items-center rounded-2xl px-6 py-4"
+          accessibilityRole="link"
+        >
+          <Text className="text-background text-base font-semibold">Create an account</Text>
         </Link>
-      </Text>
+      </View>
     </View>
   </ScrollView>
 );

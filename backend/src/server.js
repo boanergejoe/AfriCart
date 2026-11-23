@@ -50,9 +50,15 @@ const allowedOrigins = new Set(
     .filter(Boolean)
 );
 
+// Preview/deployment URLs for this app's own Vercel projects must work too,
+// otherwise the browser gets a CORS failure that looks like a network outage.
+const isOwnVercelPreview = (origin) =>
+  /^https:\/\/(afri-cart-cfe2|africart-mobile|afri-cart)(-[a-z0-9]+)*\.vercel\.app$/.test(origin);
+
 app.use(
   cors({
-    origin: (origin, callback) => callback(null, !origin || allowedOrigins.has(origin)),
+    origin: (origin, callback) =>
+      callback(null, !origin || allowedOrigins.has(origin) || isOwnVercelPreview(origin)),
     credentials: true,
   })
 );
@@ -112,6 +118,9 @@ if (ENV.NODE_ENV === "production" && process.env.VERCEL !== "1") {
 }
 
 app.use((error, _req, res, _next) => {
+  if (error.type === "entity.parse.failed") {
+    return res.status(400).json({ message: "Invalid JSON body." });
+  }
   if (error.code === "LIMIT_FILE_SIZE") {
     return res.status(413).json({ message: "Each image must be 5 MB or smaller." });
   }

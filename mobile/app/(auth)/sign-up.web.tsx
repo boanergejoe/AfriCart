@@ -30,12 +30,16 @@ const SignUpWebScreen = () => (
         fallback={<BrandLoader label="Preparing secure registration…" />}
         appearance={clerkAppearance}
       />
-      <Text className="text-text-secondary text-center text-sm" style={{ marginTop: 8 }}>
-        Already have an account?{" "}
-        <Link href="/sign-in" className="text-primary font-semibold">
-          Sign in
+      <View className="mt-3 w-full items-center gap-2">
+        <Text className="text-text-secondary text-center text-sm">Already have an account?</Text>
+        <Link
+          href="/sign-in"
+          className="border-background-lighter w-full items-center rounded-2xl border px-6 py-4"
+          accessibilityRole="link"
+        >
+          <Text className="text-text-primary text-base font-semibold">Sign in</Text>
         </Link>
-      </Text>
+      </View>
     </View>
   </ScrollView>
 );
