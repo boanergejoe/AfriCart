@@ -2,20 +2,7 @@ import { SignIn } from "@clerk/expo/web";
 import { ScrollView, Text, View } from "react-native";
 
 import BrandLoader from "@/components/BrandLoader";
-import palette from "@/lib/theme";
-
-const clerkAppearance = {
-  variables: {
-    colorPrimary: palette.brand.DEFAULT,
-    colorBackground: palette.light.background,
-    colorForeground: palette.light.text,
-    colorMutedForeground: palette.light.muted,
-    colorInput: palette.light.background,
-    colorInputForeground: palette.light.text,
-    colorNeutral: palette.light.border,
-    borderRadius: "0.85rem",
-  },
-};
+import { clerkAppearance } from "@/lib/clerkAppearance";
 
 const AuthWebScreen = () => (
   <ScrollView
@@ -38,6 +25,7 @@ const AuthWebScreen = () => (
         routing="hash"
         fallbackRedirectUrl="/"
         forceRedirectUrl="/"
+        signUpUrl="/sign-up"
         signUpFallbackRedirectUrl="/"
         signUpForceRedirectUrl="/"
         fallback={<BrandLoader label="Preparing secure sign-in…" />}

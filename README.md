@@ -82,7 +82,8 @@ admin sessions.
 Customers sign up and sign in on the storefront with the Clerk Core 3 Expo SDK (`@clerk/expo`),
 using the same `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` already listed for the mobile app. The web
 sign-in screen supports email/password accounts plus any social providers enabled in the Clerk
-Dashboard. In the Clerk Dashboard:
+Dashboard. Customers can register at `/sign-up` on the storefront, and native builds include an
+email/password sign-up screen with email-code verification. In the Clerk Dashboard:
 
 - Enable **Email address** and **Password** under **User & authentication → Sign-in & sign-up
   options** so customers can register without a social account.
