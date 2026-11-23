@@ -1,4 +1,5 @@
 import { SignUp } from "@clerk/expo/web";
+import { Link } from "expo-router";
 import { ScrollView, Text, View } from "react-native";
 
 import BrandLoader from "@/components/BrandLoader";
@@ -29,6 +30,12 @@ const SignUpWebScreen = () => (
         fallback={<BrandLoader label="Preparing secure registration…" />}
         appearance={clerkAppearance}
       />
+      <Text className="text-text-secondary text-center text-sm" style={{ marginTop: 8 }}>
+        Already have an account?{" "}
+        <Link href="/sign-in" className="text-primary font-semibold">
+          Sign in
+        </Link>
+      </Text>
     </View>
   </ScrollView>
 );

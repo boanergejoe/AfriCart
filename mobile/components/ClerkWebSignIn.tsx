@@ -1,4 +1,5 @@
 import { SignIn } from "@clerk/expo/web";
+import { Link } from "expo-router";
 import { ScrollView, Text, View } from "react-native";
 
 import BrandLoader from "@/components/BrandLoader";
@@ -32,6 +33,13 @@ const ClerkWebSignIn = () => (
         fallback={<BrandLoader label="Preparing secure sign-in…" />}
         appearance={clerkAppearance}
       />
+      {/* Clerk's built-in link can be hidden by dashboard settings; always offer a way in. */}
+      <Text className="text-text-secondary text-center text-sm" style={{ marginTop: 8 }}>
+        New to AfriCart?{" "}
+        <Link href="/sign-up" className="text-primary font-semibold">
+          Create an account
+        </Link>
+      </Text>
     </View>
   </ScrollView>
 );
