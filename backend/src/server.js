@@ -29,15 +29,22 @@ const normalizeOrigin = (value) => {
   }
 };
 
+// Expo Router web serves on 19000/19006, native dev on 8081, and Vite on 5173.
+// Include both localhost and 127.0.0.1 so local tooling can't be blocked by a host mismatch.
+const DEV_ORIGINS =
+  ENV.NODE_ENV === "production"
+    ? []
+    : ["localhost", "127.0.0.1"].flatMap((host) =>
+        [8081, 19000, 19006, 5173].map((port) => `http://${host}:${port}`)
+      );
+
 const allowedOrigins = new Set(
   [
     ENV.CLIENT_URL,
     ENV.MOBILE_CLIENT_URL,
     DEPLOYED_ADMIN_URL,
     DEPLOYED_STOREFRONT_URL,
-    ...(ENV.NODE_ENV === "production"
-      ? []
-      : ["http://localhost:8081", "http://127.0.0.1:8081", "http://localhost:5173"]),
+    ...DEV_ORIGINS,
   ]
     .map(normalizeOrigin)
     .filter(Boolean)
@@ -76,6 +83,24 @@ app.use("/api/reviews", reviewRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 
+// The backend is an API, so visiting its root should explain itself instead of
+// returning Express's default "Cannot GET /" HTML page.
+app.get("/", (_req, res) =>
+  res.status(200).json({
+    status: "ok",
+    name: "AfriCart API",
+    endpoints: { health: "/api/health", products: "/api/products", adminLogin: "/api/admin/login" },
+  })
+);
+
+app.get("/api", (_req, res) =>
+  res.status(200).json({
+    status: "ok",
+    name: "AfriCart API",
+    endpoints: { health: "/api/health", products: "/api/products", adminLogin: "/api/admin/login" },
+  })
+);
+
 app.get("/api/health", (_req, res) => res.status(200).json({ status: "ok" }));
 
 // Unknown API routes must fail as JSON, not as a SPA fallback or HTML error page.
@@ -104,6 +129,7 @@ app.use((error, _req, res, _next) => {
 const startServer = async () => {
   const missing = [
     "DB_URL",
+    "CLERK_PUBLISHABLE_KEY",
     "CLERK_SECRET_KEY",
     "ADMIN_EMAIL",
     "ADMIN_PASSWORD_HASH",

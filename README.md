@@ -119,6 +119,7 @@ PORT=3000
 
 DB_URL=<YOUR_DB_URL>
 
+CLERK_PUBLISHABLE_KEY=<YOUR_CLERK_PUBLISHABLE_KEY>
 CLERK_SECRET_KEY=<YOUR_CLERK_SECRET_KEY>
 
 INNGEST_SIGNING_KEY=<YOUR_INNGEST_SIGNING_KEY>
@@ -240,7 +241,7 @@ are embedded at build time.
 Configure these in the backend project's Vercel settings. Do not commit credentials or put backend
 secrets in `VITE_*` variables.
 
-- Required for the API: `DB_URL`, `CLERK_SECRET_KEY` (customer auth), `ADMIN_EMAIL`,
+- Required for the API: `DB_URL`, `CLERK_PUBLISHABLE_KEY` and `CLERK_SECRET_KEY` (customer auth), `ADMIN_EMAIL`,
   `ADMIN_PASSWORD_HASH`, `ADMIN_SESSION_SECRET`, `CLIENT_URL`, and `MOBILE_CLIENT_URL` for the
   customer storefront's CORS and payment callback redirect.
 - For Inngest: `INNGEST_SIGNING_KEY`.
@@ -288,3 +289,9 @@ npm start
 ```
 
 Then scan the QR code from your phone.
+
+> Start the backend first — both the admin console and the storefront call it. For local web
+> development, `admin/.env` and `mobile/.env` should point at `http://localhost:3000/api` (Expo web
+> on port `19006`/`19000` is allowed by the backend's development CORS list). For a physical phone,
+> replace `localhost` with your computer's LAN IP. The backend needs both Clerk keys in
+> `backend/.env`; `clerkMiddleware()` fails every request without `CLERK_PUBLISHABLE_KEY`.

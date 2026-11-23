@@ -126,6 +126,7 @@ From the repo root you can also use `npm run dev:backend`, `npm run dev:admin`, 
 | --- | --- | --- |
 | `NODE_ENV`, `PORT` | No | Runtime mode and local port (defaults to `3000`; Vercel supplies its own port). |
 | `DB_URL` | **Yes** | MongoDB connection string. Must support transactions. |
+| `CLERK_PUBLISHABLE_KEY` | **Yes** | Required by `clerkMiddleware()` even on public routes; use the same publishable key as the storefront. |
 | `CLERK_SECRET_KEY` | **Yes** | Verifies customer tokens via `clerkMiddleware`. |
 | `ADMIN_EMAIL` | **Yes** | Address allowed to sign in to the admin console. |
 | `ADMIN_PASSWORD_HASH` | **Yes** | `scrypt$<salt>$<hash>` produced by `npm run admin:credentials`. |
@@ -367,11 +368,12 @@ validation (`backend/src/utils/*.test.js`).
 
 | Symptom | Likely cause / fix |
 | --- | --- |
-| `Missing required environment variables: ...` on API start | Fill the listed keys in `backend/.env` and restart. |
+| `Missing required environment variables: ...` on API start | Fill the listed keys in `backend/.env` and restart. Include `CLERK_PUBLISHABLE_KEY`; `clerkMiddleware()` needs it even for public routes. |
+| Every API request returns 500 with `Publishable key is missing` | The backend is missing `CLERK_PUBLISHABLE_KEY`. Copy the same value from `mobile/.env` (`EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY`) into `backend/.env` and restart. |
 | Admin shows “Admin login is not configured.” | `ADMIN_EMAIL` / `ADMIN_SESSION_SECRET` missing in the backend environment. |
 | Admin shows “Unauthorized - sign in again” | Token expired (12 h) or `ADMIN_SESSION_SECRET` changed; sign in again. |
 | Storefront fails immediately on launch | Missing `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` or `EXPO_PUBLIC_API_URL`. |
-| CORS errors from the browser | `CLIENT_URL` / `MOBILE_CLIENT_URL` do not exactly match the frontend origin. |
+| CORS errors from the browser | `CLIENT_URL` / `MOBILE_CLIENT_URL` do not exactly match the frontend origin. Local Expo web (`19000`/`19006`), native (`8081`) and Vite (`5173`) origins are allowed in development; redeploy the backend after code changes for hosted apps. |
 | Payments never confirm | IPN not registered, `PESAPAL_IPN_ID` missing, backend not public HTTPS, or MongoDB lacks transaction support. |
 | Product uploads fail | Cloudinary variables missing/invalid or image violates upload rules (see the admin user guide). |
 | Clerk sign-up blocked at registration | Check Clerk sign-in/sign-up options and any country-restriction settings in the Clerk Dashboard. |
