@@ -82,13 +82,14 @@ admin sessions.
 Customers sign up and sign in on the storefront with the Clerk Core 3 Expo SDK (`@clerk/expo`),
 using the same `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` already listed for the mobile app. The web
 sign-in screen supports email/password accounts plus any social providers enabled in the Clerk
-Dashboard. Customers can register at `/sign-up` on the storefront, and native builds include an
-email/password sign-up screen with email-code verification. In the Clerk Dashboard:
+Dashboard. Customers can register at `/sign-up` on the storefront, and native builds include both
+email/password sign-in and sign-up screens, with email-code verification during registration. In the
+Clerk Dashboard:
 
 - Enable **Email address** and **Password** under **User & authentication → Sign-in & sign-up
   options** so customers can register without a social account.
-- Add the deployed storefront origin and its `/payment/callback` route to the allowed origins and
-  redirect URLs for the Clerk application.
+- Add the deployed storefront origin and its `/sign-in`, `/sign-up`, and `/payment/callback` routes
+  to the allowed origins and redirect URLs for the Clerk application.
 - Review **Protect → Block sign-ups by country** if that paid protection is enabled on your Clerk
   instance; it is separate from the SMS country list and is off by default.
 - The `communication.blocked_country_codes` setting is an **SMS delivery** blocklist. It does not

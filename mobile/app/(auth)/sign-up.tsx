@@ -13,20 +13,11 @@ import {
 
 import BrandLoader from "@/components/BrandLoader";
 import { showMessage } from "@/lib/alerts";
+import { authStyles } from "@/lib/authStyles";
+import { getClerkErrorMessage } from "@/lib/clerkErrors";
 import palette from "@/lib/theme";
 
 type Stage = "details" | "verify";
-
-function clerkErrorMessage(error: unknown) {
-  if (error && typeof error === "object" && "errors" in error) {
-    const errors = (error as { errors?: { longMessage?: string; message?: string }[] }).errors;
-    const message = errors?.find((item) => item.longMessage || item.message);
-    if (message) return message.longMessage || message.message || "";
-  }
-
-  if (error instanceof Error && error.message) return error.message;
-  return "Something went wrong. Please try again.";
-}
 
 const SignUpScreen = () => {
   const router = useRouter();
@@ -39,10 +30,10 @@ const SignUpScreen = () => {
 
   if (!isLoaded) return <BrandLoader label="Preparing registration…" />;
 
-  const activateSession = async () => {
-    if (!signUp.createdSessionId) return false;
+  const activateSession = async (sessionId: string | null | undefined) => {
+    if (!sessionId) return false;
 
-    await setActive({ session: signUp.createdSessionId });
+    await setActive({ session: sessionId });
     router.replace("/(tabs)");
     return true;
   };
@@ -61,8 +52,8 @@ const SignUpScreen = () => {
 
     setLoading(true);
     try {
-      await signUp.create({ emailAddress: email, password });
-      if (await activateSession()) return;
+      const created = await signUp.create({ emailAddress: email, password });
+      if (await activateSession(created.createdSessionId)) return;
 
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       setStage("verify");
@@ -71,7 +62,7 @@ const SignUpScreen = () => {
         `We sent a verification code to ${email}. Enter it below to finish registering.`
       );
     } catch (error) {
-      showMessage("Unable to register", clerkErrorMessage(error));
+      showMessage("Unable to register", getClerkErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -85,12 +76,12 @@ const SignUpScreen = () => {
 
     setLoading(true);
     try {
-      await signUp.attemptEmailAddressVerification({ code: code.trim() });
-      if (!(await activateSession())) {
+      const verified = await signUp.attemptEmailAddressVerification({ code: code.trim() });
+      if (!(await activateSession(verified.createdSessionId))) {
         showMessage("Verification incomplete", "Check the code and try again.");
       }
     } catch (error) {
-      showMessage("Unable to verify", clerkErrorMessage(error));
+      showMessage("Unable to verify", getClerkErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -102,21 +93,10 @@ const SignUpScreen = () => {
       await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
       showMessage("Code sent", "A fresh verification code is on its way.");
     } catch (error) {
-      showMessage("Unable to resend", clerkErrorMessage(error));
+      showMessage("Unable to resend", getClerkErrorMessage(error));
     } finally {
       setLoading(false);
     }
-  };
-
-  const inputStyle = {
-    minHeight: 52,
-    borderWidth: 1,
-    borderColor: palette.light.border,
-    borderRadius: 14,
-    backgroundColor: palette.light.background,
-    paddingHorizontal: 16,
-    color: palette.light.text,
-    fontSize: 16,
   };
 
   return (
@@ -173,8 +153,10 @@ const SignUpScreen = () => {
               placeholderTextColor={palette.light.muted}
               keyboardType="email-address"
               autoCapitalize="none"
+              autoComplete="email"
+              textContentType="emailAddress"
               editable={!loading}
-              style={inputStyle}
+              style={authStyles.input}
               accessibilityLabel="Email address"
             />
             <TextInput
@@ -184,30 +166,26 @@ const SignUpScreen = () => {
               placeholderTextColor={palette.light.muted}
               secureTextEntry
               autoCapitalize="none"
+              autoComplete="new-password"
+              textContentType="newPassword"
+              returnKeyType="go"
+              onSubmitEditing={handleCreateAccount}
               editable={!loading}
-              style={inputStyle}
+              style={authStyles.input}
               accessibilityLabel="Password"
             />
             <TouchableOpacity
               onPress={handleCreateAccount}
               disabled={loading}
-              style={{
-                minHeight: 54,
-                borderRadius: 999,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: palette.brand.DEFAULT,
-                opacity: loading ? 0.7 : 1,
-              }}
+              style={[authStyles.primaryButton, { opacity: loading ? 0.7 : 1 }]}
               accessibilityRole="button"
               accessibilityLabel="Create account"
+              accessibilityState={{ disabled: loading, busy: loading }}
             >
               {loading ? (
                 <ActivityIndicator color="#ffffff" />
               ) : (
-                <Text style={{ color: "#ffffff", fontSize: 16, fontWeight: "600" }}>
-                  Create account
-                </Text>
+                <Text style={authStyles.primaryButtonLabel}>Create account</Text>
               )}
             </TouchableOpacity>
           </>
@@ -220,30 +198,24 @@ const SignUpScreen = () => {
               placeholderTextColor={palette.light.muted}
               keyboardType="number-pad"
               autoCapitalize="none"
+              returnKeyType="go"
+              onSubmitEditing={handleVerifyCode}
               editable={!loading}
-              style={inputStyle}
+              style={authStyles.input}
               accessibilityLabel="Verification code"
             />
             <TouchableOpacity
               onPress={handleVerifyCode}
               disabled={loading}
-              style={{
-                minHeight: 54,
-                borderRadius: 999,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: palette.brand.DEFAULT,
-                opacity: loading ? 0.7 : 1,
-              }}
+              style={[authStyles.primaryButton, { opacity: loading ? 0.7 : 1 }]}
               accessibilityRole="button"
               accessibilityLabel="Verify email"
+              accessibilityState={{ disabled: loading, busy: loading }}
             >
               {loading ? (
                 <ActivityIndicator color="#ffffff" />
               ) : (
-                <Text style={{ color: "#ffffff", fontSize: 16, fontWeight: "600" }}>
-                  Verify and continue
-                </Text>
+                <Text style={authStyles.primaryButtonLabel}>Verify and continue</Text>
               )}
             </TouchableOpacity>
             <TouchableOpacity onPress={handleResendCode} disabled={loading}>
