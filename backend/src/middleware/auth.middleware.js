@@ -1,4 +1,4 @@
-import { clerkClient, getAuth, requireAuth } from "@clerk/express";
+import { clerkClient, getAuth } from "@clerk/express";
 import { User } from "../models/user.model.js";
 import { ENV } from "../config/env.js";
 import { verifyAdminToken } from "../utils/admin-auth.js";
@@ -44,27 +44,26 @@ async function findOrCreateUser(clerkId) {
   }
 }
 
-export const protectRoute = [
-  requireAuth(),
-  async (req, res, next) => {
-    try {
-      const { userId: clerkId } = getAuth(req);
-      if (!clerkId) return res.status(401).json({ message: "Unauthorized - invalid token" });
+// clerkMiddleware() already ran globally, so getAuth(req) is enough. The old
+// requireAuth() wrapper is deprecated and emitted a warning on every request.
+export const protectRoute = async (req, res, next) => {
+  try {
+    const { userId: clerkId } = getAuth(req);
+    if (!clerkId) return res.status(401).json({ message: "Unauthorized - invalid token" });
 
-      const user = await findOrCreateUser(clerkId);
-      if (!user) {
-        return res.status(403).json({ message: "Your Clerk account needs a primary email address." });
-      }
-
-      req.user = user;
-
-      next();
-    } catch (error) {
-      console.error("Error in protectRoute middleware", error);
-      res.status(500).json({ message: "Internal server error" });
+    const user = await findOrCreateUser(clerkId);
+    if (!user) {
+      return res.status(403).json({ message: "Your Clerk account needs a primary email address." });
     }
-  },
-];
+
+    req.user = user;
+
+    next();
+  } catch (error) {
+    console.error("Error in protectRoute middleware", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
 
 export const adminAuth = (req, res, next) => {
   if (!ENV.ADMIN_EMAIL || !ENV.ADMIN_SESSION_SECRET) {

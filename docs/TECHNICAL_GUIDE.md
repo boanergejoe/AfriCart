@@ -329,6 +329,15 @@ project, and `EXPO_PUBLIC_*` in the storefront project for each environment you 
 Preview, Development). Redeploy after changing build-time variables. `CLIENT_URL` must be the exact
 admin origin and `MOBILE_CLIENT_URL` the exact storefront origin; CORS compares normalized origins.
 
+The API root is `https://afri-cart-two.vercel.app`, but frontends must use the **`/api` suffix** as
+their base URL because route files call `/products`, `/cart`, `/admin/login`, etc.
+
+| Vercel project | Wiring that must stay in sync |
+| --- | --- |
+| `afri-cart` (API) | `CLIENT_URL` = admin origin, `MOBILE_CLIENT_URL` = storefront origin, both Clerk keys, all `CLOUDINARY_*`, and all `PESAPAL_*` including `PESAPAL_IPN_ID`, `PESAPAL_IPN_URL` and `PESAPAL_CALLBACK_URL`. |
+| `afri-cart-cfe2` (admin) | `VITE_API_URL=https://afri-cart-two.vercel.app/api` (also pinned by `admin/vercel.json`). The admin console uses the backend admin session, not Clerk, so it needs no Clerk keys. |
+| `africart-mobile` (storefront) | `EXPO_PUBLIC_API_URL=https://afri-cart-two.vercel.app/api` and `EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY` from the same Clerk instance as the API's `CLERK_PUBLISHABLE_KEY`. |
+
 Clerk Dashboard checklist for production:
 
 - Enable **Email address** and **Password** under sign-in/sign-up options.
